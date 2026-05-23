@@ -569,8 +569,7 @@
   // Read ?role= from URL. Supported values: product, pm, agile, scrum. Defaults to general.
   // product is the default -- same as no parameter
   const urlParams = new URLSearchParams(window.location.search);
-  const roleParam = (urlParams.get("role") || "general").toLowerCase();
-  const role = roleParam === "product" ? "general" : roleParam;
+  const role = (urlParams.get("role") || "general").toLowerCase();
 
   // --- ROLE-BASED CONTENT ---
   // Each role defines its own title, snippet, sitelinks, PAA, KP tags, and LinkedIn snippet.
@@ -578,22 +577,41 @@
   const roleContent = {
     general: {
       title: "Soobia Afroz - Senior Product and Delivery Leader",
-      snippet: "Senior Product Manager and Agile Delivery Lead with 15+ years in enterprise technology. Currently at Billtrust. Expert in full product lifecycle, cross-functional delivery, and AI-powered workflow automation.",
+      snippet: "Senior Product Manager and Agile Delivery Lead with 15+ years in enterprise technology. Expert in full product lifecycle, cross-functional delivery, and AI-powered workflow automation.",
       sitelinks: [
         { title: "Product Manager Resume", snippet: "Full lifecycle PM with enterprise SaaS experience and Aha! expertise" },
         { title: "Scrum Master / Delivery Lead", snippet: "Cross-functional delivery, risk management, executive reporting" },
         { title: "Agile Coach", snippet: "Transformation programmes, SAFe, PI Planning, lean methodologies" },
-        { title: "AI Automation Work", snippet: "Claude-powered PRD, Jira triage, sprint reporting tools" }
+        { title: "AI Automation Work", snippet: "Claude-powered Jira triage, sprint reporting, PM lifecycle tools" }
       ],
       paa: [
-        { q: "What does Soobia Afroz specialize in?", a: "Soobia specializes in product management, agile delivery, and scrum master roles across enterprise fintech and technology. She is particularly known for using AI tools like Claude to automate delivery workflows including Jira triage, sprint reporting, and PRD generation." },
+        { q: "What does Soobia Afroz specialize in?", a: "Soobia specializes in product management, agile delivery, and scrum master roles across enterprise fintech and technology. She is particularly known for using AI tools like Claude to automate delivery workflows including Jira triage, sprint reporting, and PM lifecycle coaching." },
         { q: "Where has Soobia Afroz worked?", a: "Soobia has worked at Billtrust (2024-present), McKinsey and Company (2018-2023), The New York Times (2013-2018), and Susquehanna International Group (2005-2013). She holds an M.S. in Computer and Information Science from the University of Pennsylvania." },
         { q: "Is Soobia Afroz available for new opportunities?", a: "Yes. Soobia is selectively exploring senior product management, agile delivery lead, and scrum master roles. She can be reached at soobia.afroz@gmail.com or 917.979.3973." },
-        { q: "What AI tools has Soobia Afroz built?", a: "Soobia has built three Claude-powered workflow tools: a Jira triage automation, a sprint reporting tool, and a PRD generation skill that converts stakeholder notes into structured product requirements documents." }
+        { q: "What AI tools has Soobia Afroz built?", a: "Soobia has built several Claude-powered workflow automation tools including a Jira triage automation, a sprint reporting tool, and a PM lifecycle coach that guides product managers through every phase from discovery through GTM and post-launch close-out." }
       ],
       kpTitle: "Senior Product and Delivery Leader",
       kpTags: ["Product Management", "Agile Coach", "Scrum Master", "SAFe", "AI Automation", "Claude", "Jira", "Aha!"],
       linkedInSnippet: "Senior Product Manager at Billtrust. Agile Coach and Delivery Lead. 15+ years in enterprise technology delivery. M.S. Computer Science, University of Pennsylvania. New York, NY."
+    },
+    product: {
+      title: "Soobia Afroz - Senior Product Manager",
+      snippet: "Senior Product Manager and Agile Coach with 15+ years in enterprise technology. Experienced in full product lifecycle delivery, hypothesis-driven discovery, roadmap ownership, and AI-powered workflow automation.",
+      sitelinks: [
+        { title: "Wallet Platform", snippet: "Payment method management hub -- 3-phase delivery across buyer segments and payment rails" },
+        { title: "Payments Features", snippet: "Chargeback management, surcharge refunds, brand pricing -- fintech B2B delivery" },
+        { title: "AI-Powered PM Tools", snippet: "Claude-powered Jira triage, sprint reporting, PRD generation, and PM lifecycle coach" },
+        { title: "Agile Coaching", snippet: "15+ years embedding agile practices across McKinsey, NYT, and Billtrust" }
+      ],
+      paa: [
+        { q: "What products has Soobia Afroz built?", a: "At Billtrust, Soobia led delivery of the Wallet platform -- a buyer-facing payment management hub delivered in three phases covering standard buyers, Account Centric group-based access, and European SEPA Direct Debit. At The New York Times, she worked closely with Product and Engineering on the CRM roadmap and led delivery of a full migration across 3 call centers from a legacy system to SugarCRM, on time and within budget." },
+        { q: "How does Soobia approach product discovery and roadmap planning?", a: "Soobia starts with real customer signal -- interviews, usage data, and win/loss research -- before committing to build anything. She uses hypothesis-driven discovery to validate ideas early, defines the Minimum Lovable Product to avoid over-engineering, and manages roadmaps in Aha! to keep stakeholders aligned on priorities and trade-offs. She has run quarterly planning sessions with leadership across fintech and media, balancing customer impact, technical complexity, and business priorities across concurrent workstreams." },
+        { q: "What AI tools has Soobia built for product management?", a: "Soobia has built several Claude-powered workflow automation tools. Examples include a Jira triage automation that eliminated the team's daily manual ticket categorization process, a sprint reporting tool that auto-generates weekly delivery summaries from Jira data, and a PM lifecycle coach that guides product managers through every phase from discovery through GTM and post-launch close-out using the BMAD framework." },
+        { q: "What is Soobia's background in agile coaching and product delivery?", a: "Soobia has 15+ years spanning product management and agile coaching across fintech, media, and enterprise technology. At McKinsey she was part of the agile practice, coaching cross-functional teams on agile ways of working across multiple business units. At The New York Times she worked closely with Product and Engineering on the CRM roadmap and led delivery of a full CRM migration across 3 call centers. She holds ICAgile certifications in Agile Coaching and Coaching Agile Transitions, and applies coaching practices directly to how she runs product teams -- backlog readiness, delivery cadence, and cross-functional alignment." }
+      ],
+      kpTitle: "Senior Product Manager and Agile Coach",
+      kpTags: ["Product Management", "Aha!", "Enterprise SaaS", "Fintech", "Discovery", "Roadmap", "Agile Coaching", "AI Automation", "Claude", "Jira", "BMAD"],
+      linkedInSnippet: "Senior Product Manager and Agile Coach. 15+ years in enterprise technology across fintech, media, and consulting. M.S. Computer Science, University of Pennsylvania. New York, NY."
     },
     pm: {
       // Coming soon -- will be built out for Project Management roles
