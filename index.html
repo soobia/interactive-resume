@@ -564,6 +564,136 @@
 </div>
 
 <script>
+
+  // --- ROLE DETECTION ---
+  // Read ?role= from URL. Supported values: product, pm, agile, scrum. Defaults to general.
+  // product is the default -- same as no parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const roleParam = (urlParams.get("role") || "general").toLowerCase();
+  const role = roleParam === "product" ? "general" : roleParam;
+
+  // --- ROLE-BASED CONTENT ---
+  // Each role defines its own title, snippet, sitelinks, PAA, KP tags, and LinkedIn snippet.
+  // To add a new role: add a new key below matching the ?role= value.
+  const roleContent = {
+    general: {
+      title: "Soobia Afroz - Senior Product and Delivery Leader",
+      snippet: "Senior Product Manager and Agile Delivery Lead with 15+ years in enterprise technology. Currently at Billtrust. Expert in full product lifecycle, cross-functional delivery, and AI-powered workflow automation.",
+      sitelinks: [
+        { title: "Product Manager Resume", snippet: "Full lifecycle PM with enterprise SaaS experience and Aha! expertise" },
+        { title: "Scrum Master / Delivery Lead", snippet: "Cross-functional delivery, risk management, executive reporting" },
+        { title: "Agile Coach", snippet: "Transformation programmes, SAFe, PI Planning, lean methodologies" },
+        { title: "AI Automation Work", snippet: "Claude-powered PRD, Jira triage, sprint reporting tools" }
+      ],
+      paa: [
+        { q: "What does Soobia Afroz specialize in?", a: "Soobia specializes in product management, agile delivery, and scrum master roles across enterprise fintech and technology. She is particularly known for using AI tools like Claude to automate delivery workflows including Jira triage, sprint reporting, and PRD generation." },
+        { q: "Where has Soobia Afroz worked?", a: "Soobia has worked at Billtrust (2024-present), McKinsey and Company (2018-2023), The New York Times (2013-2018), and Susquehanna International Group (2005-2013). She holds an M.S. in Computer and Information Science from the University of Pennsylvania." },
+        { q: "Is Soobia Afroz available for new opportunities?", a: "Yes. Soobia is selectively exploring senior product management, agile delivery lead, and scrum master roles. She can be reached at soobia.afroz@gmail.com or 917.979.3973." },
+        { q: "What AI tools has Soobia Afroz built?", a: "Soobia has built three Claude-powered workflow tools: a Jira triage automation, a sprint reporting tool, and a PRD generation skill that converts stakeholder notes into structured product requirements documents." }
+      ],
+      kpTitle: "Senior Product and Delivery Leader",
+      kpTags: ["Product Management", "Agile Coach", "Scrum Master", "SAFe", "AI Automation", "Claude", "Jira", "Aha!"],
+      linkedInSnippet: "Senior Product Manager at Billtrust. Agile Coach and Delivery Lead. 15+ years in enterprise technology delivery. M.S. Computer Science, University of Pennsylvania. New York, NY."
+    },
+    pm: {
+      // Coming soon -- will be built out for Project Management roles
+      title: "Soobia Afroz - Senior Product and Delivery Leader",
+      snippet: "Senior Product Manager and Agile Delivery Lead with 15+ years in enterprise technology. Currently at Billtrust. Expert in full product lifecycle, cross-functional delivery, and AI-powered workflow automation.",
+      sitelinks: [
+        { title: "Product Manager Resume", snippet: "Full lifecycle PM with enterprise SaaS experience and Aha! expertise" },
+        { title: "Scrum Master / Delivery Lead", snippet: "Cross-functional delivery, risk management, executive reporting" },
+        { title: "Agile Coach", snippet: "Transformation programmes, SAFe, PI Planning, lean methodologies" },
+        { title: "AI Automation Work", snippet: "Claude-powered PRD, Jira triage, sprint reporting tools" }
+      ],
+      paa: [
+        { q: "What does Soobia Afroz specialize in?", a: "Soobia specializes in product management, agile delivery, and scrum master roles across enterprise fintech and technology. She is particularly known for using AI tools like Claude to automate delivery workflows including Jira triage, sprint reporting, and PRD generation." },
+        { q: "Where has Soobia Afroz worked?", a: "Soobia has worked at Billtrust (2024-present), McKinsey and Company (2018-2023), The New York Times (2013-2018), and Susquehanna International Group (2005-2013). She holds an M.S. in Computer and Information Science from the University of Pennsylvania." },
+        { q: "Is Soobia Afroz available for new opportunities?", a: "Yes. Soobia is selectively exploring senior product management, agile delivery lead, and scrum master roles. She can be reached at soobia.afroz@gmail.com or 917.979.3973." },
+        { q: "What AI tools has Soobia Afroz built?", a: "Soobia has built three Claude-powered workflow tools: a Jira triage automation, a sprint reporting tool, and a PRD generation skill that converts stakeholder notes into structured product requirements documents." }
+      ],
+      kpTitle: "Senior Product and Delivery Leader",
+      kpTags: ["Product Management", "Agile Coach", "Scrum Master", "SAFe", "AI Automation", "Claude", "Jira", "Aha!"],
+      linkedInSnippet: "Senior Product Manager at Billtrust. Agile Coach and Delivery Lead. 15+ years in enterprise technology delivery. M.S. Computer Science, University of Pennsylvania. New York, NY."
+    },
+    agile: {
+      // Coming soon -- will be built out for Agile Coach roles
+      title: "Soobia Afroz - Senior Product and Delivery Leader",
+      snippet: "Senior Product Manager and Agile Delivery Lead with 15+ years in enterprise technology. Currently at Billtrust. Expert in full product lifecycle, cross-functional delivery, and AI-powered workflow automation.",
+      sitelinks: [
+        { title: "Product Manager Resume", snippet: "Full lifecycle PM with enterprise SaaS experience and Aha! expertise" },
+        { title: "Scrum Master / Delivery Lead", snippet: "Cross-functional delivery, risk management, executive reporting" },
+        { title: "Agile Coach", snippet: "Transformation programmes, SAFe, PI Planning, lean methodologies" },
+        { title: "AI Automation Work", snippet: "Claude-powered PRD, Jira triage, sprint reporting tools" }
+      ],
+      paa: [
+        { q: "What does Soobia Afroz specialize in?", a: "Soobia specializes in product management, agile delivery, and scrum master roles across enterprise fintech and technology. She is particularly known for using AI tools like Claude to automate delivery workflows including Jira triage, sprint reporting, and PRD generation." },
+        { q: "Where has Soobia Afroz worked?", a: "Soobia has worked at Billtrust (2024-present), McKinsey and Company (2018-2023), The New York Times (2013-2018), and Susquehanna International Group (2005-2013). She holds an M.S. in Computer and Information Science from the University of Pennsylvania." },
+        { q: "Is Soobia Afroz available for new opportunities?", a: "Yes. Soobia is selectively exploring senior product management, agile delivery lead, and scrum master roles. She can be reached at soobia.afroz@gmail.com or 917.979.3973." },
+        { q: "What AI tools has Soobia Afroz built?", a: "Soobia has built three Claude-powered workflow tools: a Jira triage automation, a sprint reporting tool, and a PRD generation skill that converts stakeholder notes into structured product requirements documents." }
+      ],
+      kpTitle: "Senior Product and Delivery Leader",
+      kpTags: ["Product Management", "Agile Coach", "Scrum Master", "SAFe", "AI Automation", "Claude", "Jira", "Aha!"],
+      linkedInSnippet: "Senior Product Manager at Billtrust. Agile Coach and Delivery Lead. 15+ years in enterprise technology delivery. M.S. Computer Science, University of Pennsylvania. New York, NY."
+    },
+    scrum: {
+      // Coming soon -- will be built out for Scrum Master roles
+      title: "Soobia Afroz - Senior Product and Delivery Leader",
+      snippet: "Senior Product Manager and Agile Delivery Lead with 15+ years in enterprise technology. Currently at Billtrust. Expert in full product lifecycle, cross-functional delivery, and AI-powered workflow automation.",
+      sitelinks: [
+        { title: "Product Manager Resume", snippet: "Full lifecycle PM with enterprise SaaS experience and Aha! expertise" },
+        { title: "Scrum Master / Delivery Lead", snippet: "Cross-functional delivery, risk management, executive reporting" },
+        { title: "Agile Coach", snippet: "Transformation programmes, SAFe, PI Planning, lean methodologies" },
+        { title: "AI Automation Work", snippet: "Claude-powered PRD, Jira triage, sprint reporting tools" }
+      ],
+      paa: [
+        { q: "What does Soobia Afroz specialize in?", a: "Soobia specializes in product management, agile delivery, and scrum master roles across enterprise fintech and technology. She is particularly known for using AI tools like Claude to automate delivery workflows including Jira triage, sprint reporting, and PRD generation." },
+        { q: "Where has Soobia Afroz worked?", a: "Soobia has worked at Billtrust (2024-present), McKinsey and Company (2018-2023), The New York Times (2013-2018), and Susquehanna International Group (2005-2013). She holds an M.S. in Computer and Information Science from the University of Pennsylvania." },
+        { q: "Is Soobia Afroz available for new opportunities?", a: "Yes. Soobia is selectively exploring senior product management, agile delivery lead, and scrum master roles. She can be reached at soobia.afroz@gmail.com or 917.979.3973." },
+        { q: "What AI tools has Soobia Afroz built?", a: "Soobia has built three Claude-powered workflow tools: a Jira triage automation, a sprint reporting tool, and a PRD generation skill that converts stakeholder notes into structured product requirements documents." }
+      ],
+      kpTitle: "Senior Product and Delivery Leader",
+      kpTags: ["Product Management", "Agile Coach", "Scrum Master", "SAFe", "AI Automation", "Claude", "Jira", "Aha!"],
+      linkedInSnippet: "Senior Product Manager at Billtrust. Agile Coach and Delivery Lead. 15+ years in enterprise technology delivery. M.S. Computer Science, University of Pennsylvania. New York, NY."
+    }
+  };
+
+  // Get content for current role, fall back to general if role not found
+  const content = roleContent[role] || roleContent.general;
+
+  // Apply role-specific content to the DOM on load
+  function applyRoleContent() {
+    // Main result title and snippet
+    document.querySelector(".result-title").textContent = content.title;
+    document.querySelector(".result-snippet").innerHTML = `<span class="date">May 2026 — </span>${content.snippet}`;
+
+    // Sitelinks
+    const sitelinkEls = document.querySelectorAll(".sitelink");
+    content.sitelinks.forEach((sl, i) => {
+      if (sitelinkEls[i]) {
+        sitelinkEls[i].querySelector(".sitelink-title").textContent = sl.title;
+        sitelinkEls[i].querySelector(".sitelink-snippet").textContent = sl.snippet;
+      }
+    });
+
+    // People Also Ask
+    const paaItems = document.querySelectorAll(".paa-item");
+    content.paa.forEach((item, i) => {
+      if (paaItems[i]) {
+        paaItems[i].querySelector(".paa-question").childNodes[0].textContent = item.q;
+        paaItems[i].querySelector(".paa-answer").textContent = item.a;
+      }
+    });
+
+    // Knowledge panel
+    document.querySelector(".kp-title").textContent = content.kpTitle;
+    const kpTagsEl = document.querySelector(".kp-tags");
+    kpTagsEl.innerHTML = content.kpTags.map(t => `<span class="kp-tag">${t}</span>`).join("");
+
+    // LinkedIn result snippet
+    const linkedInSnippet = document.querySelector("#result-linkedin .result-snippet");
+    if (linkedInSnippet) linkedInSnippet.textContent = content.linkedInSnippet;
+  }
+
   const typedEl = document.getElementById("typed-text");
   const cursorEl = document.getElementById("cursor");
   const statsEl = document.getElementById("results-stats");
@@ -573,6 +703,9 @@
   const knowledgePanel = document.getElementById("knowledge-panel");
   const searchBox = document.querySelector(".search-box");
   const searchTextWrapper = document.querySelector(".search-text");
+
+  // Apply role content immediately on load
+  applyRoleContent();
 
   // Replace the display span+cursor with a real input for interactive mode
   const realInput = document.createElement("input");
