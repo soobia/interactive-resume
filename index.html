@@ -3,2573 +3,890 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Soccer Explained for Americans</title>
-<meta name="description" content="Confused by the World Cup? Get plain-English answers using NFL, NBA, and MLB analogies. No jargon, no condescension.">
-
+<title>Search - Soobia Afroz</title>
 <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-X6TP8027WV">
-function dismissSharePrompt() {
-  document.getElementById('sharePrompt').style.display = 'none';
-}
-
-function dismissKofiPrompt() {
-  document.getElementById('kofiPrompt').style.display = 'none';
-}
-
-
-function showScores(linkEl) {
-  // On mobile, show the scores sidebar and hide chat content
-  document.querySelectorAll('#bottom-nav a').forEach(a => a.classList.remove('active'));
-  linkEl.classList.add('active');
-  const sidebar = document.getElementById('scoresSidebar');
-  const chatCol = document.querySelector('.chat-column');
-  if (window.innerWidth <= 768) {
-    sidebar.classList.add('active');
-    chatCol.style.display = 'none';
-  }
-  window.scrollTo(0, 0);
-}
-
-// When switching back to chat page, restore chat column
-const origShowPage = showPage;
-function showPage(pageId, linkEl) {
-  const chatCol = document.querySelector('.chat-column');
-  const sidebar = document.getElementById('scoresSidebar');
-  if (chatCol) chatCol.style.display = '';
-  if (sidebar) sidebar.classList.remove('active');
-  origShowPage(pageId, linkEl);
-}
-
-
-// ── SCORES WIDGET ──
-const COUNTRY_FLAGS = {
-  'Germany': '🇩🇪', 'France': '🇫🇷', 'Brazil': '🇧🇷', 'Argentina': '🇦🇷',
-  'Spain': '🇪🇸', 'Portugal': '🇵🇹', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Netherlands': '🇳🇱',
-  'Belgium': '🇧🇪', 'Italy': '🇮🇹', 'Uruguay': '🇺🇾', 'Mexico': '🇲🇽',
-  'United States': '🇺🇸', 'USA': '🇺🇸', 'Canada': '🇨🇦', 'Japan': '🇯🇵',
-  'South Korea': '🇰🇷', 'Morocco': '🇲🇦', 'Senegal': '🇸🇳', 'Ghana': '🇬🇭',
-  'Australia': '🇦🇺', 'Croatia': '🇭🇷', 'Serbia': '🇷🇸', 'Switzerland': '🇨🇭',
-  'Denmark': '🇩🇰', 'Poland': '🇵🇱', 'Ecuador': '🇪🇨', 'Colombia': '🇨🇴',
-  'Chile': '🇨🇱', 'Peru': '🇵🇪', 'Nigeria': '🇳🇬', 'Cameroon': '🇨🇲',
-  'Tunisia': '🇹🇳', 'South Africa': '🇿🇦', 'Egypt': '🇪🇬', 'Algeria': '🇩🇿',
-  'Saudi Arabia': '🇸🇦', 'Iran': '🇮🇷', 'Qatar': '🇶🇦', 'Turkey': '🇹🇷',
-  'Ukraine': '🇺🇦', 'Czech Republic': '🇨🇿', 'Austria': '🇦🇹', 'Hungary': '🇭🇺',
-  'Slovakia': '🇸🇰', 'Romania': '🇷🇴', 'Greece': '🇬🇷', 'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
-  'Wales': '🏴󠁧󠁢󠁷󠁬󠁳󠁿', 'Paraguay': '🇵🇾', 'Bolivia': '🇧🇴', 'Venezuela': '🇻🇪',
-  'Honduras': '🇭🇳', 'Costa Rica': '🇨🇷', 'Panama': '🇵🇦', 'Jamaica': '🇯🇲',
-  'New Zealand': '🇳🇿', 'Indonesia': '🇮🇩', 'Thailand': '🇹🇭', 'Vietnam': '🇻🇳',
-  'China': '🇨🇳', 'India': '🇮🇳', 'Iraq': '🇮🇶', 'Syria': '🇸🇾',
-  'Bosnia-Herzegovina': '🇧🇦', 'Slovenia': '🇸🇮', 'Albania': '🇦🇱',
-  'North Macedonia': '🇲🇰', 'Montenegro': '🇲🇪', 'Kosovo': '🇽🇰',
-  'Haiti': '🇭🇹', 'Cuba': '🇨🇺', 'Trinidad and Tobago': '🇹🇹'
-};
-
-function getFlag(name) {
-  return COUNTRY_FLAGS[name] || '🏳️';
-}
-
-function getAmazonUrl(teamName) {
-  const tag = 'whyishecrying-20';
-  const search = teamName === 'United States' ? 'USMNT World Cup jersey 2026' : teamName + ' World Cup jersey 2026';
-  return `https://www.amazon.com/s?k=${encodeURIComponent(search)}&tag=${tag}`;
-}
-
-function formatDate(dateStr) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
-    ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-}
-
-let scoresCache = { fixtures: null, standings: null, lastFetch: 0 };
-let currentScoresTab = 'fixtures';
-
-async function loadScores(type) {
-  const now = Date.now();
-  if (scoresCache[type] && now - scoresCache.lastFetch < 60000) {
-    renderScores(type, scoresCache[type]);
-    return;
-  }
-
-  document.getElementById('scoresContent').innerHTML = '<div class="scores-loading">Loading...</div>';
-
-  try {
-    const res = await fetch(`/api/scores?type=${type}`);
-    if (!res.ok) throw new Error('failed');
-    const data = await res.json();
-    scoresCache[type] = data;
-    scoresCache.lastFetch = now;
-    renderScores(type, data);
-  } catch (err) {
-    document.getElementById('scoresContent').innerHTML = '<div class="scores-loading">Could not load data. Try again.</div>';
-  }
-}
-
-function renderScores(type, data) {
-  const container = document.getElementById('scoresContent');
-  if (!container) return;
-
-  if (type === 'fixtures') {
-    if (!data.matches || data.matches.length === 0) {
-      container.innerHTML = '<div class="scores-loading">No fixtures available yet.</div>';
-      return;
-    }
-
-    // Show next 20 matches + any live/today
-    const now = new Date();
-    const matches = data.matches
-      .filter(m => new Date(m.utcDate) >= new Date(now - 24 * 60 * 60 * 1000))
-      .slice(0, 25);
-
-    let html = '';
-    matches.forEach(m => {
-      const isLive = m.status === 'IN_PLAY' || m.status === 'PAUSED';
-      const isFinished = m.status === 'FINISHED';
-      const home = m.homeTeam.name;
-      const away = m.awayTeam.name;
-      const homeScore = m.score.fullTime.home ?? (isLive ? m.score.halfTime.home ?? '0' : '-');
-      const awayScore = m.score.fullTime.away ?? (isLive ? m.score.halfTime.away ?? '0' : '-');
-      const scoreDisplay = isFinished || isLive ? `${homeScore} - ${awayScore}` : 'vs';
-      const group = m.group ? m.group.replace('GROUP_', 'Group ') : '';
-
-      html += `
-        <div class="fixture-item">
-          <div class="fixture-date">${isLive ? '🔴 LIVE' : formatDate(m.utcDate)}</div>
-          <div class="fixture-teams">
-            <a class="fixture-team" href="${getAmazonUrl(home)}" target="_blank" rel="noopener sponsored">
-              <span class="fixture-flag">${getFlag(home)}</span>
-              <span>${home}</span>
-            </a>
-            <span class="fixture-score${isLive ? ' live' : ''}">${scoreDisplay}</span>
-            <a class="fixture-team away" href="${getAmazonUrl(away)}" target="_blank" rel="noopener sponsored">
-              <span>${away}</span>
-              <span class="fixture-flag">${getFlag(away)}</span>
-            </a>
-          </div>
-          ${group ? `<div class="fixture-group">${group}</div>` : ''}
-        </div>`;
-    });
-    container.innerHTML = html;
-
-  } else {
-    // Standings
-    if (!data.standings || data.standings.length === 0) {
-      container.innerHTML = '<div class="scores-loading">Standings will appear once the tournament begins.</div>';
-      return;
-    }
-
-    let html = '';
-    data.standings.forEach(group => {
-      html += `<div class="standing-group">${group.group || 'Group'}</div>`;
-      group.table.forEach(row => {
-        const team = row.team.name;
-        html += `
-          <div class="standing-row">
-            <span class="standing-pos">${row.position}</span>
-            <a class="standing-team" href="${getAmazonUrl(team)}" target="_blank" rel="noopener sponsored">
-              <span>${getFlag(team)}</span>
-              <span>${team}</span>
-            </a>
-            <div class="standing-stats">
-              <span>${row.playedGames}G</span>
-              <span>${row.won}W</span>
-              <span>${row.draw}D</span>
-              <span>${row.lost}L</span>
-            </div>
-            <span class="standing-pts">${row.points}pts</span>
-          </div>`;
-      });
-    });
-    container.innerHTML = html;
-  }
-}
-
-function switchScoresTab(type, btn) {
-  currentScoresTab = type;
-  document.querySelectorAll('.scores-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
-  loadScores(type);
-}
-
-// Load fixtures on page load
-document.addEventListener('DOMContentLoaded', function() {
-  loadScores('fixtures');
-  // Refresh every 60 seconds
-  setInterval(() => loadScores(currentScoresTab), 60000);
-});
-
-</script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-31XF3FDWVV"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-  gtag('config', 'G-X6TP8027WV');
-
-function dismissSharePrompt() {
-  document.getElementById('sharePrompt').style.display = 'none';
-}
-
-function dismissKofiPrompt() {
-  document.getElementById('kofiPrompt').style.display = 'none';
-}
-
-
-function showScores(linkEl) {
-  // On mobile, show the scores sidebar and hide chat content
-  document.querySelectorAll('#bottom-nav a').forEach(a => a.classList.remove('active'));
-  linkEl.classList.add('active');
-  const sidebar = document.getElementById('scoresSidebar');
-  const chatCol = document.querySelector('.chat-column');
-  if (window.innerWidth <= 768) {
-    sidebar.classList.add('active');
-    chatCol.style.display = 'none';
-  }
-  window.scrollTo(0, 0);
-}
-
-// When switching back to chat page, restore chat column
-const origShowPage = showPage;
-function showPage(pageId, linkEl) {
-  const chatCol = document.querySelector('.chat-column');
-  const sidebar = document.getElementById('scoresSidebar');
-  if (chatCol) chatCol.style.display = '';
-  if (sidebar) sidebar.classList.remove('active');
-  origShowPage(pageId, linkEl);
-}
-
-
-// ── SCORES WIDGET ──
-const COUNTRY_FLAGS = {
-  'Germany': '🇩🇪', 'France': '🇫🇷', 'Brazil': '🇧🇷', 'Argentina': '🇦🇷',
-  'Spain': '🇪🇸', 'Portugal': '🇵🇹', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Netherlands': '🇳🇱',
-  'Belgium': '🇧🇪', 'Italy': '🇮🇹', 'Uruguay': '🇺🇾', 'Mexico': '🇲🇽',
-  'United States': '🇺🇸', 'USA': '🇺🇸', 'Canada': '🇨🇦', 'Japan': '🇯🇵',
-  'South Korea': '🇰🇷', 'Morocco': '🇲🇦', 'Senegal': '🇸🇳', 'Ghana': '🇬🇭',
-  'Australia': '🇦🇺', 'Croatia': '🇭🇷', 'Serbia': '🇷🇸', 'Switzerland': '🇨🇭',
-  'Denmark': '🇩🇰', 'Poland': '🇵🇱', 'Ecuador': '🇪🇨', 'Colombia': '🇨🇴',
-  'Chile': '🇨🇱', 'Peru': '🇵🇪', 'Nigeria': '🇳🇬', 'Cameroon': '🇨🇲',
-  'Tunisia': '🇹🇳', 'South Africa': '🇿🇦', 'Egypt': '🇪🇬', 'Algeria': '🇩🇿',
-  'Saudi Arabia': '🇸🇦', 'Iran': '🇮🇷', 'Qatar': '🇶🇦', 'Turkey': '🇹🇷',
-  'Ukraine': '🇺🇦', 'Czech Republic': '🇨🇿', 'Austria': '🇦🇹', 'Hungary': '🇭🇺',
-  'Slovakia': '🇸🇰', 'Romania': '🇷🇴', 'Greece': '🇬🇷', 'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
-  'Wales': '🏴󠁧󠁢󠁷󠁬󠁳󠁿', 'Paraguay': '🇵🇾', 'Bolivia': '🇧🇴', 'Venezuela': '🇻🇪',
-  'Honduras': '🇭🇳', 'Costa Rica': '🇨🇷', 'Panama': '🇵🇦', 'Jamaica': '🇯🇲',
-  'New Zealand': '🇳🇿', 'Indonesia': '🇮🇩', 'Thailand': '🇹🇭', 'Vietnam': '🇻🇳',
-  'China': '🇨🇳', 'India': '🇮🇳', 'Iraq': '🇮🇶', 'Syria': '🇸🇾',
-  'Bosnia-Herzegovina': '🇧🇦', 'Slovenia': '🇸🇮', 'Albania': '🇦🇱',
-  'North Macedonia': '🇲🇰', 'Montenegro': '🇲🇪', 'Kosovo': '🇽🇰',
-  'Haiti': '🇭🇹', 'Cuba': '🇨🇺', 'Trinidad and Tobago': '🇹🇹'
-};
-
-function getFlag(name) {
-  return COUNTRY_FLAGS[name] || '🏳️';
-}
-
-function getAmazonUrl(teamName) {
-  const tag = 'whyishecrying-20';
-  const search = teamName === 'United States' ? 'USMNT World Cup jersey 2026' : teamName + ' World Cup jersey 2026';
-  return `https://www.amazon.com/s?k=${encodeURIComponent(search)}&tag=${tag}`;
-}
-
-function formatDate(dateStr) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
-    ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-}
-
-let scoresCache = { fixtures: null, standings: null, lastFetch: 0 };
-let currentScoresTab = 'fixtures';
-
-async function loadScores(type) {
-  const now = Date.now();
-  if (scoresCache[type] && now - scoresCache.lastFetch < 60000) {
-    renderScores(type, scoresCache[type]);
-    return;
-  }
-
-  document.getElementById('scoresContent').innerHTML = '<div class="scores-loading">Loading...</div>';
-
-  try {
-    const res = await fetch(`/api/scores?type=${type}`);
-    if (!res.ok) throw new Error('failed');
-    const data = await res.json();
-    scoresCache[type] = data;
-    scoresCache.lastFetch = now;
-    renderScores(type, data);
-  } catch (err) {
-    document.getElementById('scoresContent').innerHTML = '<div class="scores-loading">Could not load data. Try again.</div>';
-  }
-}
-
-function renderScores(type, data) {
-  const container = document.getElementById('scoresContent');
-  if (!container) return;
-
-  if (type === 'fixtures') {
-    if (!data.matches || data.matches.length === 0) {
-      container.innerHTML = '<div class="scores-loading">No fixtures available yet.</div>';
-      return;
-    }
-
-    // Show next 20 matches + any live/today
-    const now = new Date();
-    const matches = data.matches
-      .filter(m => new Date(m.utcDate) >= new Date(now - 24 * 60 * 60 * 1000))
-      .slice(0, 25);
-
-    let html = '';
-    matches.forEach(m => {
-      const isLive = m.status === 'IN_PLAY' || m.status === 'PAUSED';
-      const isFinished = m.status === 'FINISHED';
-      const home = m.homeTeam.name;
-      const away = m.awayTeam.name;
-      const homeScore = m.score.fullTime.home ?? (isLive ? m.score.halfTime.home ?? '0' : '-');
-      const awayScore = m.score.fullTime.away ?? (isLive ? m.score.halfTime.away ?? '0' : '-');
-      const scoreDisplay = isFinished || isLive ? `${homeScore} - ${awayScore}` : 'vs';
-      const group = m.group ? m.group.replace('GROUP_', 'Group ') : '';
-
-      html += `
-        <div class="fixture-item">
-          <div class="fixture-date">${isLive ? '🔴 LIVE' : formatDate(m.utcDate)}</div>
-          <div class="fixture-teams">
-            <a class="fixture-team" href="${getAmazonUrl(home)}" target="_blank" rel="noopener sponsored">
-              <span class="fixture-flag">${getFlag(home)}</span>
-              <span>${home}</span>
-            </a>
-            <span class="fixture-score${isLive ? ' live' : ''}">${scoreDisplay}</span>
-            <a class="fixture-team away" href="${getAmazonUrl(away)}" target="_blank" rel="noopener sponsored">
-              <span>${away}</span>
-              <span class="fixture-flag">${getFlag(away)}</span>
-            </a>
-          </div>
-          ${group ? `<div class="fixture-group">${group}</div>` : ''}
-        </div>`;
-    });
-    container.innerHTML = html;
-
-  } else {
-    // Standings
-    if (!data.standings || data.standings.length === 0) {
-      container.innerHTML = '<div class="scores-loading">Standings will appear once the tournament begins.</div>';
-      return;
-    }
-
-    let html = '';
-    data.standings.forEach(group => {
-      html += `<div class="standing-group">${group.group || 'Group'}</div>`;
-      group.table.forEach(row => {
-        const team = row.team.name;
-        html += `
-          <div class="standing-row">
-            <span class="standing-pos">${row.position}</span>
-            <a class="standing-team" href="${getAmazonUrl(team)}" target="_blank" rel="noopener sponsored">
-              <span>${getFlag(team)}</span>
-              <span>${team}</span>
-            </a>
-            <div class="standing-stats">
-              <span>${row.playedGames}G</span>
-              <span>${row.won}W</span>
-              <span>${row.draw}D</span>
-              <span>${row.lost}L</span>
-            </div>
-            <span class="standing-pts">${row.points}pts</span>
-          </div>`;
-      });
-    });
-    container.innerHTML = html;
-  }
-}
-
-function switchScoresTab(type, btn) {
-  currentScoresTab = type;
-  document.querySelectorAll('.scores-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
-  loadScores(type);
-}
-
-// Load fixtures on page load
-document.addEventListener('DOMContentLoaded', function() {
-  loadScores('fixtures');
-  // Refresh every 60 seconds
-  setInterval(() => loadScores(currentScoresTab), 60000);
-});
-
+  gtag('config', 'G-31XF3FDWVV');
 </script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5562839312656090"
-     crossorigin="anonymous">
-// ── HERO INPUT ──
-const heroInput = document.getElementById('heroInput');
-const heroPlaceholder = document.getElementById('heroPlaceholder');
-
-if (heroInput) {
-  heroInput.addEventListener('focus', function() {
-    if (heroPlaceholder) heroPlaceholder.style.opacity = '0';
-  });
-
-  heroInput.addEventListener('blur', function() {
-    if (!this.value) {
-      if (heroPlaceholder) heroPlaceholder.style.opacity = '1';
-    }
-  });
-
-  heroInput.addEventListener('input', function() {
-    if (heroPlaceholder) heroPlaceholder.style.opacity = this.value ? '0' : '1';
-  });
-}
-
-function autoResizeHero(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-}
-
-function handleHeroKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendFromHero();
-  }
-}
-
-function sendFromHero() {
-  const heroInput = document.getElementById('heroInput');
-  const question = heroInput ? heroInput.value.trim() : '';
-  if (!question) return;
-  // Copy to main chat input and send
-  const chatInput = document.getElementById('chatInput');
-  if (chatInput) chatInput.value = question;
-  heroInput.value = '';
-  if (heroPlaceholder) heroPlaceholder.style.opacity = '1';
-  // Make sure chat page is active
-  showPage('chat', document.querySelector('#bottom-nav a'));
-  // Scroll to chat
-  const chatWindow = document.getElementById('chatMessages');
-  if (chatWindow) chatWindow.scrollIntoView({ behavior: 'smooth' });
-  sendMessage();
-}
-
-
-function dismissSharePrompt() {
-  document.getElementById('sharePrompt').style.display = 'none';
-}
-
-function dismissKofiPrompt() {
-  document.getElementById('kofiPrompt').style.display = 'none';
-}
-
-
-function showScores(linkEl) {
-  // On mobile, show the scores sidebar and hide chat content
-  document.querySelectorAll('#bottom-nav a').forEach(a => a.classList.remove('active'));
-  linkEl.classList.add('active');
-  const sidebar = document.getElementById('scoresSidebar');
-  const chatCol = document.querySelector('.chat-column');
-  if (window.innerWidth <= 768) {
-    sidebar.classList.add('active');
-    chatCol.style.display = 'none';
-  }
-  window.scrollTo(0, 0);
-}
-
-// When switching back to chat page, restore chat column
-const origShowPage = showPage;
-function showPage(pageId, linkEl) {
-  const chatCol = document.querySelector('.chat-column');
-  const sidebar = document.getElementById('scoresSidebar');
-  if (chatCol) chatCol.style.display = '';
-  if (sidebar) sidebar.classList.remove('active');
-  origShowPage(pageId, linkEl);
-}
-
-
-// ── SCORES WIDGET ──
-const COUNTRY_FLAGS = {
-  'Germany': '🇩🇪', 'France': '🇫🇷', 'Brazil': '🇧🇷', 'Argentina': '🇦🇷',
-  'Spain': '🇪🇸', 'Portugal': '🇵🇹', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Netherlands': '🇳🇱',
-  'Belgium': '🇧🇪', 'Italy': '🇮🇹', 'Uruguay': '🇺🇾', 'Mexico': '🇲🇽',
-  'United States': '🇺🇸', 'USA': '🇺🇸', 'Canada': '🇨🇦', 'Japan': '🇯🇵',
-  'South Korea': '🇰🇷', 'Morocco': '🇲🇦', 'Senegal': '🇸🇳', 'Ghana': '🇬🇭',
-  'Australia': '🇦🇺', 'Croatia': '🇭🇷', 'Serbia': '🇷🇸', 'Switzerland': '🇨🇭',
-  'Denmark': '🇩🇰', 'Poland': '🇵🇱', 'Ecuador': '🇪🇨', 'Colombia': '🇨🇴',
-  'Chile': '🇨🇱', 'Peru': '🇵🇪', 'Nigeria': '🇳🇬', 'Cameroon': '🇨🇲',
-  'Tunisia': '🇹🇳', 'South Africa': '🇿🇦', 'Egypt': '🇪🇬', 'Algeria': '🇩🇿',
-  'Saudi Arabia': '🇸🇦', 'Iran': '🇮🇷', 'Qatar': '🇶🇦', 'Turkey': '🇹🇷',
-  'Ukraine': '🇺🇦', 'Czech Republic': '🇨🇿', 'Austria': '🇦🇹', 'Hungary': '🇭🇺',
-  'Slovakia': '🇸🇰', 'Romania': '🇷🇴', 'Greece': '🇬🇷', 'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
-  'Wales': '🏴󠁧󠁢󠁷󠁬󠁳󠁿', 'Paraguay': '🇵🇾', 'Bolivia': '🇧🇴', 'Venezuela': '🇻🇪',
-  'Honduras': '🇭🇳', 'Costa Rica': '🇨🇷', 'Panama': '🇵🇦', 'Jamaica': '🇯🇲',
-  'New Zealand': '🇳🇿', 'Indonesia': '🇮🇩', 'Thailand': '🇹🇭', 'Vietnam': '🇻🇳',
-  'China': '🇨🇳', 'India': '🇮🇳', 'Iraq': '🇮🇶', 'Syria': '🇸🇾',
-  'Bosnia-Herzegovina': '🇧🇦', 'Slovenia': '🇸🇮', 'Albania': '🇦🇱',
-  'North Macedonia': '🇲🇰', 'Montenegro': '🇲🇪', 'Kosovo': '🇽🇰',
-  'Haiti': '🇭🇹', 'Cuba': '🇨🇺', 'Trinidad and Tobago': '🇹🇹'
-};
-
-function getFlag(name) {
-  return COUNTRY_FLAGS[name] || '🏳️';
-}
-
-function getAmazonUrl(teamName) {
-  const tag = 'whyishecrying-20';
-  const search = teamName === 'United States' ? 'USMNT World Cup jersey 2026' : teamName + ' World Cup jersey 2026';
-  return `https://www.amazon.com/s?k=${encodeURIComponent(search)}&tag=${tag}`;
-}
-
-function formatDate(dateStr) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
-    ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-}
-
-let scoresCache = { fixtures: null, standings: null, lastFetch: 0 };
-let currentScoresTab = 'fixtures';
-
-async function loadScores(type) {
-  const now = Date.now();
-  if (scoresCache[type] && now - scoresCache.lastFetch < 60000) {
-    renderScores(type, scoresCache[type]);
-    return;
-  }
-
-  document.getElementById('scoresContent').innerHTML = '<div class="scores-loading">Loading...</div>';
-
-  try {
-    const res = await fetch(`/api/scores?type=${type}`);
-    if (!res.ok) throw new Error('failed');
-    const data = await res.json();
-    scoresCache[type] = data;
-    scoresCache.lastFetch = now;
-    renderScores(type, data);
-  } catch (err) {
-    document.getElementById('scoresContent').innerHTML = '<div class="scores-loading">Could not load data. Try again.</div>';
-  }
-}
-
-function renderScores(type, data) {
-  const container = document.getElementById('scoresContent');
-  if (!container) return;
-
-  if (type === 'fixtures') {
-    if (!data.matches || data.matches.length === 0) {
-      container.innerHTML = '<div class="scores-loading">No fixtures available yet.</div>';
-      return;
-    }
-
-    // Show next 20 matches + any live/today
-    const now = new Date();
-    const matches = data.matches
-      .filter(m => new Date(m.utcDate) >= new Date(now - 24 * 60 * 60 * 1000))
-      .slice(0, 25);
-
-    let html = '';
-    matches.forEach(m => {
-      const isLive = m.status === 'IN_PLAY' || m.status === 'PAUSED';
-      const isFinished = m.status === 'FINISHED';
-      const home = m.homeTeam.name;
-      const away = m.awayTeam.name;
-      const homeScore = m.score.fullTime.home ?? (isLive ? m.score.halfTime.home ?? '0' : '-');
-      const awayScore = m.score.fullTime.away ?? (isLive ? m.score.halfTime.away ?? '0' : '-');
-      const scoreDisplay = isFinished || isLive ? `${homeScore} - ${awayScore}` : 'vs';
-      const group = m.group ? m.group.replace('GROUP_', 'Group ') : '';
-
-      html += `
-        <div class="fixture-item">
-          <div class="fixture-date">${isLive ? '🔴 LIVE' : formatDate(m.utcDate)}</div>
-          <div class="fixture-teams">
-            <a class="fixture-team" href="${getAmazonUrl(home)}" target="_blank" rel="noopener sponsored">
-              <span class="fixture-flag">${getFlag(home)}</span>
-              <span>${home}</span>
-            </a>
-            <span class="fixture-score${isLive ? ' live' : ''}">${scoreDisplay}</span>
-            <a class="fixture-team away" href="${getAmazonUrl(away)}" target="_blank" rel="noopener sponsored">
-              <span>${away}</span>
-              <span class="fixture-flag">${getFlag(away)}</span>
-            </a>
-          </div>
-          ${group ? `<div class="fixture-group">${group}</div>` : ''}
-        </div>`;
-    });
-    container.innerHTML = html;
-
-  } else {
-    // Standings
-    if (!data.standings || data.standings.length === 0) {
-      container.innerHTML = '<div class="scores-loading">Standings will appear once the tournament begins.</div>';
-      return;
-    }
-
-    let html = '';
-    data.standings.forEach(group => {
-      html += `<div class="standing-group">${group.group || 'Group'}</div>`;
-      group.table.forEach(row => {
-        const team = row.team.name;
-        html += `
-          <div class="standing-row">
-            <span class="standing-pos">${row.position}</span>
-            <a class="standing-team" href="${getAmazonUrl(team)}" target="_blank" rel="noopener sponsored">
-              <span>${getFlag(team)}</span>
-              <span>${team}</span>
-            </a>
-            <div class="standing-stats">
-              <span>${row.playedGames}G</span>
-              <span>${row.won}W</span>
-              <span>${row.draw}D</span>
-              <span>${row.lost}L</span>
-            </div>
-            <span class="standing-pts">${row.points}pts</span>
-          </div>`;
-      });
-    });
-    container.innerHTML = html;
-  }
-}
-
-function switchScoresTab(type, btn) {
-  currentScoresTab = type;
-  document.querySelectorAll('.scores-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
-  loadScores(type);
-}
-
-// Load fixtures on page load
-document.addEventListener('DOMContentLoaded', function() {
-  loadScores('fixtures');
-  // Refresh every 60 seconds
-  setInterval(() => loadScores(currentScoresTab), 60000);
-});
-
-</script>
-
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --green: #b22234;
-    --green-light: #cc2e42;
-    --green-dark: #0a2d6e;
-    --gold: #f5c518;
-    --white: #f4f6fb;
-    --off-white: #e8edf7;
-    --dark: #0a0e1a;
-    --gray: #5a6070;
-    --border: #c8d0e0;
-    --red: #b22234;
-    --blue: #0a2d6e;
-    --star: #f5c518;
-  }
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--white);
-    color: var(--dark);
+    font-family: Arial, sans-serif;
+    background: #fff;
     min-height: 100vh;
   }
 
-  header {
-    background: var(--green-dark);
-    background-image:
-      repeating-linear-gradient(0deg, transparent, transparent 28px, rgba(255,255,255,0.03) 28px, rgba(255,255,255,0.03) 29px),
-      repeating-linear-gradient(90deg, transparent, transparent 28px, rgba(255,255,255,0.03) 28px, rgba(255,255,255,0.03) 29px);
-    padding: 28px 24px 24px;
-    text-align: center;
-    border-bottom: 4px solid var(--gold);
-    position: relative;
-    overflow: hidden;
-  }
-
-  header::before {
-    content: '⚽';
-    position: absolute;
-    font-size: 180px;
-    opacity: 0.05;
-    top: -30px;
-    right: -20px;
-    line-height: 1;
-  }
-
-  .site-title {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(2.4rem, 7vw, 4rem);
-    color: var(--white);
-    letter-spacing: 2px;
-    line-height: 1;
-  }
-
-  .site-title span { color: var(--gold); }
-
-  .site-tagline {
-    color: rgba(247,245,240,0.7);
-    font-size: 0.95rem;
-    margin-top: 8px;
-    font-weight: 400;
-  }
-
-  nav {
-    background: var(--blue, #0a2d6e);
+  /* TOP NAV */
+  .top-nav {
     display: flex;
-    justify-content: center;
-    gap: 0;
-    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 8px 20px;
+    gap: 16px;
+    opacity: 0;
+    animation: fadeIn 0.3s ease 0.1s forwards;
   }
-
-  nav a {
-    color: rgba(247,245,240,0.85);
+  .top-nav a {
+    font-size: 13px;
+    color: #202124;
     text-decoration: none;
-    font-size: 0.82rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding: 10px 18px;
-    transition: background 0.15s, color 0.15s;
   }
-
-  nav a:hover, nav a.active {
-    background: rgba(178,34,52,0.85);
-    color: #ffffff;
-  }
-
-  .page { display: none; }
-  .page.active { display: block; }
-
-  .container {
-    max-width: 760px;
-    margin: 0 auto;
-    padding: 32px 20px 60px;
-  }
-
-  .chat-intro {
-    background: var(--off-white);
-    border: 1px solid var(--border);
-    border-left: 4px solid var(--gold);
-    border-radius: 6px;
-    padding: 18px 20px;
-    margin-bottom: 24px;
-    font-size: 0.95rem;
-    line-height: 1.6;
-    color: var(--gray);
-  }
-
-  .chat-intro strong { color: var(--dark); }
-
-  .quick-questions { margin-bottom: 24px; }
-
-  .quick-questions p {
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--gray);
-    margin-bottom: 10px;
-  }
-
-  .quick-btns {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .quick-btn {
-    background: var(--off-white);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 7px 14px;
-    font-size: 0.83rem;
-    font-family: 'DM Sans', sans-serif;
-    cursor: pointer;
-    color: var(--dark);
-    transition: all 0.15s;
+  .top-nav a:hover { text-decoration: underline; }
+  .sign-in-btn {
+    background: #1a73e8;
+    color: #fff !important;
+    padding: 8px 18px;
+    border-radius: 4px;
+    font-size: 14px;
     font-weight: 500;
   }
+  .sign-in-btn:hover { text-decoration: none !important; background: #1557b0; }
 
-  .quick-btn:hover {
-    background: var(--blue, #0a2d6e);
-    color: var(--white);
-    border-color: var(--blue, #0a2d6e);
-  }
-
-  .chat-window {
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
-    background: #fff;
-    margin-bottom: 16px;
-  }
-
-  .chat-messages {
-    min-height: 200px;
-    max-height: 480px;
-    overflow-y: auto;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .message {
-    display: flex;
-    gap: 12px;
-    animation: fadeUp 0.25s ease;
-  }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .message-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
+  /* HEADER WITH LOGO + SEARCH */
+  .search-header {
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-size: 14px;
+    padding: 14px 20px 10px 20px;
+    border-bottom: 1px solid #ebebeb;
+    gap: 24px;
+    opacity: 0;
+    animation: fadeIn 0.3s ease 0.2s forwards;
+  }
+
+  .google-logo {
     flex-shrink: 0;
-    margin-top: 2px;
+    font-size: 26px;
+    letter-spacing: -1px;
+    font-family: 'Product Sans', Arial, sans-serif;
+    user-select: none;
+  }
+  .logo-blue { color: #4285F4; }
+  .logo-red { color: #EA4335; }
+  .logo-yellow { color: #FBBC05; }
+  .logo-green { color: #34A853; }
+
+  .search-box-wrapper {
+    flex: 1;
+    max-width: 660px;
+    position: relative;
   }
 
-  .message.user .message-avatar {
-    background: var(--off-white);
-    border: 1px solid var(--border);
-  }
-
-  .message.assistant .message-avatar { background: var(--green-dark); }
-
-  .message-body { flex: 1; }
-
-  .message-label {
-    font-size: 0.72rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--gray);
-    margin-bottom: 4px;
-  }
-
-  .message-text {
-    font-size: 0.95rem;
-    line-height: 1.65;
-    color: var(--dark);
-  }
-
-  .message.user .message-text {
-    color: var(--gray);
-    font-style: italic;
-  }
-
-  .affiliate-card {
-    background: var(--off-white);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 12px 14px;
-    margin-top: 12px;
+  .search-box {
     display: flex;
     align-items: center;
-    gap: 12px;
-    text-decoration: none;
-    transition: border-color 0.15s, background 0.15s;
-    cursor: pointer;
-  }
-
-  .affiliate-card:hover {
-    border-color: var(--blue, #0a2d6e);
-    background: #fff;
-  }
-
-  .affiliate-icon { font-size: 22px; flex-shrink: 0; }
-  .affiliate-text { flex: 1; }
-
-  .affiliate-title {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--dark);
-    display: block;
-  }
-
-  .affiliate-sub {
-    font-size: 0.78rem;
-    color: var(--gray);
-    display: block;
-    margin-top: 2px;
-  }
-
-  .affiliate-cta {
-    background: var(--blue, #0a2d6e);
-    color: var(--white);
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 5px 10px;
-    border-radius: 4px;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .chat-footer {
-    border-top: 1px solid var(--border);
-    padding: 12px 16px;
-    display: flex;
+    border: 1px solid #dfe1e5;
+    border-radius: 24px;
+    padding: 8px 16px;
     gap: 10px;
-    align-items: flex-end;
-    background: var(--off-white);
-  }
-
-  .chat-input {
-    flex: 1;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px 14px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.9rem;
-    resize: none;
-    min-height: 42px;
-    max-height: 100px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     background: #fff;
-    color: var(--dark);
-    outline: none;
-    transition: border-color 0.15s;
+    cursor: text;
   }
+  .search-box:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
 
-  .chat-input:focus { border-color: var(--blue, #0a2d6e); }
-  .chat-input::placeholder { color: #b0aca5; }
-
-  .send-btn {
-    background: var(--blue, #0a2d6e);
-    color: var(--white);
-    border: none;
-    border-radius: 6px;
-    padding: 0 18px;
-    height: 42px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.88rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s;
-    white-space: nowrap;
+  .search-icon {
+    color: #9aa0a6;
+    font-size: 18px;
     flex-shrink: 0;
   }
 
-  .send-btn:hover { background: #1a4d9e; }
-  .send-btn:disabled { background: var(--border); color: var(--gray); cursor: not-allowed; }
-
-  .question-counter {
-    text-align: center;
-    font-size: 0.78rem;
-    color: var(--gray);
-    margin-top: 10px;
-  }
-
-  .question-counter span {
-    font-weight: 700;
-    color: var(--green);
-  }
-
-  .limit-reached {
-    text-align: center;
-    padding: 20px;
-    background: var(--off-white);
-    border-top: 1px solid var(--border);
-  }
-
-  .limit-reached p {
-    font-size: 0.9rem;
-    color: var(--gray);
-    margin-bottom: 12px;
-  }
-
-  .kofi-btn {
-    display: inline-block;
-    background: var(--gold);
-    color: var(--dark);
-    text-decoration: none;
-    padding: 9px 20px;
-    border-radius: 6px;
-    font-weight: 700;
-    font-size: 0.88rem;
-    transition: opacity 0.15s;
-  }
-
-  .kofi-btn:hover { opacity: 0.85; }
-
-  .typing {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-    padding: 6px 0;
-  }
-
-  .typing span {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--green);
-    animation: bounce 1.2s infinite;
-  }
-
-  .typing span:nth-child(2) { animation-delay: 0.2s; }
-  .typing span:nth-child(3) { animation-delay: 0.4s; }
-
-  @keyframes bounce {
-    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-    30% { transform: translateY(-5px); opacity: 1; }
-  }
-
-  .articles-grid { display: grid; gap: 16px; }
-
-  .article-card {
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 22px 24px;
-    cursor: pointer;
-    transition: border-color 0.15s, box-shadow 0.15s;
-  }
-
-  .article-card:hover {
-    border-color: var(--blue, #0a2d6e);
-    box-shadow: 0 4px 12px rgba(10,45,110,0.1);
-  }
-
-  .article-tag {
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--green);
-    margin-bottom: 8px;
-    display: block;
-  }
-
-  .article-title {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 1.5rem;
-    letter-spacing: 1px;
-    color: var(--dark);
-    margin-bottom: 8px;
-    line-height: 1.1;
-  }
-
-  .article-excerpt {
-    font-size: 0.88rem;
-    color: var(--gray);
-    line-height: 1.6;
-  }
-
-  .article-full { display: none; }
-  .article-full.active { display: block; }
-  .articles-list.hidden { display: none; }
-
-  .back-btn {
-    background: none;
-    border: none;
-    color: var(--blue, #0a2d6e);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.88rem;
-    font-weight: 600;
-    cursor: pointer;
-    padding: 0 0 20px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .back-btn:hover { text-decoration: underline; }
-
-  .article-full h1 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(2rem, 5vw, 3rem);
-    letter-spacing: 1.5px;
-    line-height: 1.05;
-    margin-bottom: 14px;
-  }
-
-  .article-full .article-body {
-    font-size: 0.95rem;
-    line-height: 1.8;
-    color: #2a2520;
-  }
-
-  .article-full .article-body h2 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 1.5rem;
-    letter-spacing: 1px;
-    margin: 28px 0 10px;
-    color: var(--green-dark);
-  }
-
-  .article-full .article-body p { margin-bottom: 16px; }
-
-  .article-full .article-body .analogy {
-    background: var(--off-white);
-    border-left: 3px solid var(--gold);
-    padding: 14px 18px;
-    border-radius: 0 6px 6px 0;
-    margin: 20px 0;
-    font-style: italic;
-    font-size: 0.93rem;
-    color: var(--gray);
-  }
-
-  .about-section h2 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 2rem;
-    letter-spacing: 1px;
-    margin-bottom: 12px;
-    color: var(--green-dark);
-  }
-
-  .about-section p {
-    font-size: 0.95rem;
-    line-height: 1.75;
-    color: #2a2520;
-    margin-bottom: 16px;
-  }
-
-  .contact-form {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    max-width: 500px;
-  }
-
-  .contact-form input,
-  .contact-form textarea {
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px 14px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.9rem;
-    background: #fff;
-    color: var(--dark);
-    outline: none;
-    transition: border-color 0.15s;
-  }
-
-  .contact-form input:focus,
-  .contact-form textarea:focus { border-color: var(--green); }
-
-  .contact-form textarea { min-height: 120px; resize: vertical; }
-
-  .contact-form button {
-    background: var(--blue, #0a2d6e);
-    color: var(--white);
-    border: none;
-    border-radius: 6px;
-    padding: 11px 24px;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    align-self: flex-start;
-    transition: background 0.15s;
-  }
-
-  .contact-form button:hover { background: #1a4d9e; }
-
-  .legal-body h2 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 1.6rem;
-    letter-spacing: 1px;
-    margin: 24px 0 8px;
-    color: var(--green-dark);
-  }
-
-  .legal-body p, .legal-body ul {
-    font-size: 0.9rem;
-    line-height: 1.75;
-    color: var(--gray);
-    margin-bottom: 12px;
-  }
-
-  .legal-body ul { padding-left: 20px; }
-
-  footer {
-    background: var(--green-dark);
-    color: rgba(247,245,240,0.55);
-    text-align: center;
-    padding: 22px 20px;
-    font-size: 0.78rem;
-    line-height: 1.7;
-  }
-
-  footer a { color: var(--gold); text-decoration: none; }
-
-  .kofi-float {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: var(--star, #f5c518);
-    color: var(--dark);
-    text-decoration: none;
-    padding: 10px 16px;
-    border-radius: 30px;
-    font-weight: 700;
-    font-size: 0.82rem;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-    z-index: 100;
-    transition: transform 0.15s, box-shadow 0.15s;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .kofi-float:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.28);
-  }
-
-  @media (max-width: 600px) {
-    .quick-btns { gap: 6px; }
-    .quick-btn { font-size: 0.78rem; padding: 6px 12px; }
-    nav a { font-size: 0.75rem; padding: 9px 12px; }
-  }
-
-  /* ── HERO INPUT ── */
-  header {
-    padding-bottom: 32px;
-  }
-
-  .hero-input-wrap {
-    position: relative;
-    max-width: 620px;
-    margin: 28px auto 0;
-  }
-
-  .hero-input-container {
-    position: relative;
-    display: flex;
-    align-items: center;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
-    overflow: hidden;
-    padding: 0;
-  }
-
-  .hero-input {
+  .search-text {
+    font-size: 16px;
+    color: #202124;
     flex: 1;
-    border: none;
-    outline: none;
-    padding: 18px 20px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 1.05rem;
-    color: var(--dark);
-    background: transparent;
-    resize: none;
-    min-height: 58px;
-    max-height: 120px;
-    line-height: 1.5;
-    z-index: 2;
-    position: relative;
+    white-space: nowrap;
+    overflow: hidden;
   }
+
+  .cursor {
+    display: inline-block;
+    width: 2px;
+    height: 18px;
+    background: #1a73e8;
+    vertical-align: middle;
+    margin-left: 1px;
+    animation: blink 1s step-end infinite;
+  }
+  .cursor.hidden { display: none; }
 
   @keyframes blink {
     0%, 100% { opacity: 1; }
     50% { opacity: 0; }
   }
 
-  .hero-placeholder {
-    position: absolute;
-    left: 20px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 1.05rem;
-    color: #aab0c0;
-    pointer-events: none;
-    z-index: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    transition: opacity 0.15s;
+  .search-box-icons {
     display: flex;
     align-items: center;
-    gap: 2px;
-  }
-
-  .hero-cursor-inline {
-    display: inline-block;
-    width: 2px;
-    height: 1.2em;
-    background: var(--blue, #0a2d6e);
-    animation: blink 1s step-end infinite;
-    vertical-align: middle;
-    margin-right: 4px;
-    flex-shrink: 0;
-  }
-
-  .hero-btn {
-    background: var(--green);
-    color: #fff;
-    border: none;
-    padding: 0 28px;
-    height: 58px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 1rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background 0.15s;
-    white-space: nowrap;
-    flex-shrink: 0;
-    letter-spacing: 0.02em;
-  }
-
-  .hero-btn:hover { background: var(--green-light); }
-
-  .hero-note {
-    text-align: center;
-    margin-top: 10px;
-    font-size: 0.78rem;
-    color: rgba(255,255,255,0.5);
-  }
-
-  /* ── BOTTOM NAV ── */
-  #bottom-nav {
-    background: var(--blue, #0a2d6e);
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  #bottom-nav a {
-    color: rgba(247,245,240,0.75);
-    text-decoration: none;
-    font-size: 0.78rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding: 10px 16px;
-    transition: background 0.15s, color 0.15s;
-  }
-
-  #bottom-nav a:hover, #bottom-nav a.active {
-    background: rgba(178,34,52,0.85);
-    color: #fff;
-  }
-
-
-  /* ── SHARE & KOFI PROMPTS ── */
-  .share-prompt, .kofi-prompt {
-    background: var(--off-white, #e8edf7);
-    border-top: 1px solid var(--border, #c8d0e0);
-    padding: 18px 20px;
-    text-align: center;
-    animation: fadeUp 0.3s ease;
-  }
-
-  .share-title {
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--dark, #0a0e1a);
-    margin-bottom: 6px;
-  }
-
-  .share-sub {
-    font-size: 0.82rem;
-    color: var(--gray, #5a6070);
-    margin-bottom: 14px;
-  }
-
-  .share-btns {
-    display: flex;
     gap: 10px;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-  }
-
-  .share-btn {
-    padding: 9px 18px;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    text-decoration: none;
-    transition: opacity 0.15s;
-  }
-
-  .share-btn:hover { opacity: 0.85; }
-
-  .share-twitter {
-    background: #000;
-    color: #fff;
-  }
-
-  .share-reddit {
-    background: #ff4500;
-    color: #fff;
-  }
-
-  .share-kofi {
-    background: var(--star, #f5c518);
-    color: var(--dark, #0a0e1a);
-  }
-
-  .share-dismiss {
-    background: none;
-    border: none;
-    color: var(--gray, #5a6070);
-    font-size: 0.78rem;
-    cursor: pointer;
-    text-decoration: underline;
-    font-family: 'DM Sans', sans-serif;
-    padding: 4px;
-  }
-
-  .share-dismiss:hover { color: var(--dark, #0a0e1a); }
-
-
-  /* ── SCORES SIDEBAR ── */
-  .main-layout {
-    display: flex;
-    gap: 24px;
-    align-items: flex-start;
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 32px 20px 60px;
-  }
-
-  .chat-column {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .scores-sidebar {
-    width: 380px;
     flex-shrink: 0;
-    position: sticky;
-    top: 20px;
   }
-
-  .scores-sidebar h3 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 1.2rem;
-    letter-spacing: 1px;
-    color: var(--blue, #0a2d6e);
-    margin-bottom: 10px;
-  }
-
-  .scores-tab-btn {
-    display: none;
-  }
-
-  @media (max-width: 768px) {
-    .main-layout {
-      display: block;
-      padding: 0;
-    }
-
-    .chat-column {
-      padding: 20px 16px 60px;
-    }
-
-    .scores-sidebar {
-      display: none;
-      width: 100%;
-      padding: 20px 16px 60px;
-      position: static;
-    }
-
-    .scores-sidebar.active {
-      display: block;
-    }
-
-    .scores-tab-btn {
-      display: block;
-    }
-  }
-
-
-  /* ── SCORES WIDGET ── */
-  .scores-widget {
-    background: #fff;
-    border: 1px solid var(--border, #c8d0e0);
-    border-radius: 10px;
-    overflow: hidden;
-  }
-
-  .scores-tabs {
-    display: flex;
-    border-bottom: 1px solid var(--border, #c8d0e0);
-  }
-
-  .scores-tab {
-    flex: 1;
-    padding: 10px;
-    border: none;
-    background: none;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.82rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+  .search-box-icons svg {
+    width: 20px;
+    height: 20px;
+    color: #4285F4;
     cursor: pointer;
-    color: var(--gray, #5a6070);
-    transition: all 0.15s;
+    opacity: 0.7;
   }
+  .search-box-icons svg:hover { opacity: 1; }
 
-  .scores-tab.active {
-    background: var(--blue, #0a2d6e);
-    color: #fff;
+  /* NAV TABS */
+  .nav-tabs {
+    display: flex;
+    align-items: center;
+    padding: 8px 20px 0 170px;
+    gap: 4px;
+    border-bottom: 1px solid #ebebeb;
+    opacity: 0;
+    animation: fadeIn 0.3s ease 0.3s forwards;
   }
-
-  .scores-content {
-    max-height: 520px;
-    overflow-y: auto;
-  }
-
-  .scores-loading {
-    padding: 20px;
-    text-align: center;
-    color: var(--gray);
-    font-size: 0.85rem;
-  }
-
-  .fixture-item {
+  .nav-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     padding: 10px 14px;
-    border-bottom: 1px solid var(--border, #c8d0e0);
-    font-size: 0.82rem;
+    font-size: 13px;
+    color: #5f6368;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .nav-tab:hover { color: #202124; border-bottom-color: #dadce0; }
+  .nav-tab.active { color: #1a73e8; border-bottom-color: #1a73e8; }
+  .nav-tab svg { width: 14px; height: 14px; }
+
+  /* RESULTS AREA */
+  .results-area {
+    padding: 20px 20px 20px 170px;
+    max-width: 830px;
   }
 
-  .fixture-date {
-    font-size: 0.7rem;
-    color: var(--gray);
-    font-weight: 600;
-    text-transform: uppercase;
+  .results-stats {
+    font-size: 13px;
+    color: #70757a;
+    margin-bottom: 20px;
+    opacity: 0;
+  }
+
+  /* RESULT CARD */
+  .result-card {
+    max-width: 600px;
+    margin-bottom: 28px;
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  .result-url {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin-bottom: 4px;
   }
-
-  .fixture-teams {
+  .result-favicon {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #1a73e8;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-  }
-
-  .fixture-team {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    flex: 1;
-    text-decoration: none;
-    color: var(--dark, #0a0e1a);
-    font-weight: 500;
-    transition: color 0.15s;
-  }
-
-  .fixture-team:hover { color: var(--green, #b22234); }
-
-  .fixture-team.away { flex-direction: row-reverse; text-align: right; }
-
-  .fixture-flag { font-size: 1rem; }
-
-  .fixture-score {
-    font-weight: 700;
-    font-size: 0.9rem;
-    color: var(--blue, #0a2d6e);
-    min-width: 40px;
-    text-align: center;
-  }
-
-  .fixture-score.live {
-    color: var(--green, #b22234);
-    animation: pulse 1.5s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
-
-  .fixture-group {
-    font-size: 0.68rem;
-    color: var(--gray);
-    margin-top: 3px;
-  }
-
-  .standing-group {
-    padding: 8px 14px 4px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--blue, #0a2d6e);
-    background: var(--off-white, #e8edf7);
-  }
-
-  .standing-row {
-    display: flex;
-    align-items: center;
-    padding: 7px 14px;
-    border-bottom: 1px solid var(--border, #c8d0e0);
-    font-size: 0.78rem;
-    gap: 6px;
-  }
-
-  .standing-pos {
-    width: 16px;
-    color: var(--gray);
-    font-weight: 600;
+    justify-content: center;
+    font-size: 10px;
+    color: white;
+    font-weight: bold;
     flex-shrink: 0;
   }
+  .result-domain {
+    font-size: 14px;
+    color: #202124;
+  }
+  .result-domain span {
+    color: #5f6368;
+    font-size: 13px;
+  }
 
-  .standing-team {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    text-decoration: none;
-    color: var(--dark);
+  .result-title {
+    font-size: 20px;
+    color: #1a0dab;
+    font-weight: 400;
+    cursor: pointer;
+    line-height: 1.3;
+    margin-bottom: 6px;
+  }
+  .result-title:hover { text-decoration: underline; }
+
+  .result-snippet {
+    font-size: 14px;
+    color: #4d5156;
+    line-height: 1.58;
+  }
+  .result-snippet .date {
+    color: #70757a;
+  }
+
+  /* SITELINKS */
+  .sitelinks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    margin-top: 12px;
+    border: 1px solid #ebebeb;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .sitelink {
+    padding: 12px 16px;
+    border-right: 1px solid #ebebeb;
+    border-bottom: 1px solid #ebebeb;
+    cursor: pointer;
+  }
+  .sitelink:nth-child(even) { border-right: none; }
+  .sitelink:nth-last-child(-n+2) { border-bottom: none; }
+  .sitelink:hover { background: #f8f9fa; }
+  .sitelink-title {
+    font-size: 14px;
+    color: #1a0dab;
+    margin-bottom: 3px;
     font-weight: 500;
   }
+  .sitelink-title:hover { text-decoration: underline; }
+  .sitelink-snippet {
+    font-size: 12px;
+    color: #4d5156;
+    line-height: 1.4;
+  }
 
-  .standing-team:hover { color: var(--green, #b22234); }
+  /* KNOWLEDGE PANEL */
+  .knowledge-panel {
+    position: fixed;
+    right: 40px;
+    top: 120px;
+    width: 320px;
+    border: 1px solid #ebebeb;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+    opacity: 0;
+    transform: translateY(8px);
+  }
 
-  .standing-stats {
+  .kp-name {
+    font-size: 28px;
+    font-weight: 400;
+    color: #202124;
+    margin-bottom: 4px;
+  }
+  .kp-title {
+    font-size: 14px;
+    color: #5f6368;
+    margin-bottom: 16px;
+  }
+  .kp-divider {
+    border: none;
+    border-top: 1px solid #ebebeb;
+    margin: 12px 0;
+  }
+  .kp-row {
     display: flex;
-    gap: 10px;
-    color: var(--gray);
-    font-size: 0.72rem;
+    gap: 12px;
+    margin-bottom: 10px;
+    font-size: 14px;
+  }
+  .kp-label { color: #5f6368; min-width: 80px; }
+  .kp-value { color: #202124; }
+  .kp-value a { color: #1a0dab; text-decoration: none; }
+  .kp-value a:hover { text-decoration: underline; }
+
+  .kp-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .kp-tag {
+    background: #f1f3f4;
+    border-radius: 16px;
+    padding: 6px 12px;
+    font-size: 13px;
+    color: #202124;
+    cursor: pointer;
+  }
+  .kp-tag:hover { background: #e8eaed; }
+
+  /* ANIMATIONS */
+  @keyframes fadeIn {
+    to { opacity: 1; }
+  }
+  @keyframes slideUp {
+    to { opacity: 1; transform: translateY(0); }
   }
 
-  .standing-pts {
-    font-weight: 700;
-    color: var(--blue, #0a2d6e);
-    min-width: 20px;
-    text-align: right;
+  .animate-slide {
+    animation: slideUp 0.4s ease forwards;
   }
 
+  /* ALSO ASKED */
+  .paa-section {
+    max-width: 600px;
+    margin-bottom: 24px;
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  .paa-title {
+    font-size: 18px;
+    color: #202124;
+    font-weight: 400;
+    margin-bottom: 12px;
+  }
+  .paa-item {
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    overflow: hidden;
+  }
+  .paa-question {
+    padding: 14px 16px;
+    font-size: 15px;
+    color: #202124;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    background: #fff;
+  }
+  .paa-question:hover { background: #f8f9fa; }
+  .paa-chevron {
+    font-size: 12px;
+    color: #5f6368;
+    transition: transform 0.2s;
+  }
+  .paa-item.open .paa-chevron { transform: rotate(180deg); }
+  .paa-answer {
+    display: none;
+    padding: 0 16px 14px;
+    font-size: 14px;
+    color: #4d5156;
+    line-height: 1.58;
+    border-top: 1px solid #ebebeb;
+    padding-top: 12px;
+  }
+  .paa-item.open .paa-answer { display: block; }
+
+  @media (max-width: 1100px) {
+    .knowledge-panel { display: none; }
+  }
+  @media (max-width: 768px) {
+    .results-area { padding: 16px; }
+    .nav-tabs { padding-left: 16px; }
+    .search-header { padding: 10px 16px; }
+  }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="site-title">Soccer <span>Explained</span> for Americans</div>
-  <div class="site-tagline">Plain-English answers using NFL, NBA & MLB analogies. No jargon, no condescension.</div>
-</header>
-
-
-
-<div id="page-chat" class="page active">
-  <div class="main-layout">
-    <div class="chat-column">
-
-    <div class="quick-questions">
-      <p>Popular questions</p>
-      <div class="quick-btns">
-        <button class="quick-btn" onclick="askQuestion('What is offside?')">What is offside?</button>
-        <button class="quick-btn" onclick="askQuestion('How does VAR work?')">How does VAR work?</button>
-        <button class="quick-btn" onclick="askQuestion('What happens if tied after 90 minutes?')">Tied after 90 mins?</button>
-        <button class="quick-btn" onclick="askQuestion('Why do players fake injuries?')">Why fake injuries?</button>
-        <button class="quick-btn" onclick="askQuestion('What is a penalty shootout?')">Penalty shootout?</button>
-        <button class="quick-btn" onclick="askQuestion('How do group standings work?')">Group standings?</button>
-        <button class="quick-btn" onclick="askQuestion('What is stoppage time?')">Stoppage time?</button>
-        <button class="quick-btn" onclick="askQuestion('What is a red card?')">Red card?</button>
-      </div>
-    </div>
-
-    <div class="chat-window">
-      <div class="chat-messages" id="chatMessages">
-        <div class="message assistant">
-          <div class="message-avatar">⚽</div>
-          <div class="message-body">
-            <div class="message-label">Soccer Explainer</div>
-            <div class="message-text">
-              Hey! World Cup got you confused? I've got you. Ask me anything about the rules, the drama, or why everyone's screaming at the TV. I'll explain it using football, basketball, or baseball analogies so it actually makes sense.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div id="chatFooter" class="chat-footer">
-        <textarea
-          id="chatInput"
-          class="chat-input"
-          placeholder="e.g. Why did that goal get disallowed?"
-          rows="1"
-          onkeydown="handleKey(event)"
-          oninput="autoResize(this)"
-        ></textarea>
-        <button class="send-btn" id="sendBtn" onclick="sendMessage()">Ask →</button>
-      </div>
-
-      <div id="sharePrompt" class="share-prompt" style="display:none;">
-        <p class="share-title">⚽ Enjoying this? Help spread the word!</p>
-        <p class="share-sub">Share with confused friends watching the World Cup — and keep asking away.</p>
-        <div class="share-btns">
-          <a href="https://twitter.com/intent/tweet?text=Confused+by+the+World+Cup%3F+This+tool+explains+soccer+in+plain+English+using+NFL%2FNBA+analogies+%F0%9F%87%BA%F0%9F%87%B8%E2%9A%BD&url=https%3A%2F%2Fwhyishecrying.com&hashtags=WorldCup2026,USMNT" target="_blank" rel="noopener" class="share-btn share-twitter">🐦 Share on X</a>
-          <a href="https://www.reddit.com/submit?url=https%3A%2F%2Fwhyishecrying.com&title=This+tool+explains+World+Cup+soccer+in+plain+English+for+Americans" target="_blank" rel="noopener" class="share-btn share-reddit">🟠 Share on Reddit</a>
-        </div>
-        <button class="share-dismiss" onclick="dismissSharePrompt()">No thanks, just keep asking →</button>
-      </div>
-
-      <div id="kofiPrompt" class="kofi-prompt" style="display:none;">
-        <p class="share-title">☕ You've asked 20 questions — you're basically an expert now!</p>
-        <p class="share-sub">This tool is free. If it's been helpful, a $1 tip keeps it running.</p>
-        <div class="share-btns">
-          <a href="https://ko-fi.com/whyishecrying" target="_blank" rel="noopener" class="share-btn share-kofi">☕ Buy us a $1 coffee</a>
-        </div>
-        <button class="share-dismiss" onclick="dismissKofiPrompt()">Maybe later — keep asking →</button>
-      </div>
-    </div>
-
-    <div class="question-counter" id="questionCounter">
-      <span id="questionsLeft">3</span> live questions remaining &nbsp;·&nbsp; <span style="color: var(--blue, #0a2d6e); font-weight:600;">Popular questions above are always free</span>
-    </div>
-
-    </div><!-- end chat-column -->
-
-    <div class="scores-sidebar" id="scoresSidebar">
-      <div class="scores-widget">
-        <div class="scores-tabs">
-          <button class="scores-tab active" onclick="switchScoresTab('fixtures', this)">Fixtures</button>
-          <button class="scores-tab" onclick="switchScoresTab('standings', this)">Standings</button>
-        </div>
-        <div id="scoresContent" class="scores-content">
-          <div class="scores-loading">Loading...</div>
-        </div>
-      </div>
-    </div>
-
-  </div><!-- end main-layout -->
+<!-- TOP NAV -->
+<div class="top-nav">
+  <a href="#">Gmail</a>
+  <a href="#">Images</a>
+  <a href="#" class="sign-in-btn">Sign in</a>
 </div>
 
-<div id="page-articles" class="page">
-  <div class="container">
-
-    <div class="articles-list" id="articlesList">
-      <div class="articles-grid">
-
-        <div class="article-card" onclick="showArticle('offside')">
-          <span class="article-tag">The Rules</span>
-          <div class="article-title">Offside: The NFL Equivalent That Makes It Click</div>
-          <div class="article-excerpt">It's the call that causes more confusion than any other in soccer. Here's exactly how it works, using an analogy that every football fan will instantly understand.</div>
-        </div>
-
-        <div class="article-card" onclick="showArticle('var')">
-          <span class="article-tag">Technology</span>
-          <div class="article-title">VAR Explained: Instant Replay, But With More Drama</div>
-          <div class="article-excerpt">Video Assistant Referee technology — why it exists, when refs actually use it, and why it makes some moments take 10 minutes to resolve.</div>
-        </div>
-
-        <div class="article-card" onclick="showArticle('groups')">
-          <span class="article-tag">Tournament Format</span>
-          <div class="article-title">How Group Stage Standings Actually Work</div>
-          <div class="article-excerpt">Points, goal difference, tiebreakers — the World Cup group stage has a specific logic. Once you get it, tracking your team becomes genuinely exciting.</div>
-        </div>
-
-        <div class="article-card" onclick="showArticle('tiebreakers')">
-          <span class="article-tag">Tournament Format</span>
-          <div class="article-title">Extra Time, Penalties, and the Cruelest Tiebreaker in Sports</div>
-          <div class="article-excerpt">What happens when it's still tied after 90 minutes? Here's the sequence — and why a penalty shootout is uniquely brutal compared to anything in American sports.</div>
-        </div>
-
-        <div class="article-card" onclick="showArticle('rules')">
-          <span class="article-tag">Rules</span>
-          <div class="article-title">Five Recent Rule Changes You Need to Know for 2026</div>
-          <div class="article-excerpt">The rules of soccer aren't static. From handball rules to substitutions, here's what's changed in recent years that could affect the World Cup you're watching right now.</div>
-        </div>
-
-      </div>
-    </div>
-
-    <div id="article-offside" class="article-full">
-      <button class="back-btn" onclick="showArticleList()">← Back to Explainers</button>
-      <h1>Offside: The NFL Equivalent That Makes It Click</h1>
-      <div class="article-body">
-        <p>Offside is the most complained-about call in soccer, and it's also the most misunderstood. Here's the version that will make you nod your head.</p>
-        <h2>The Simple Version</h2>
-        <p>When a teammate passes you the ball, you cannot be ahead of the last defender (not counting the goalkeeper) at the moment the ball is kicked. You have to be "onside" — even with or behind that last defender — when your teammate's foot hits the ball.</p>
-        <div class="analogy">Think of it like a forward pass in the NFL. You can't catch a pass if you're behind the line of scrimmage — but in reverse. In soccer, you can't receive a pass if you're too far <em>forward</em>, ahead of the defense. The line is the last defender, not a painted line on the field.</div>
-        <h2>What It Is Not</h2>
-        <p>Offside is NOT called when you receive the ball directly from a corner kick, throw-in, or goal kick. It's also not about where you are the whole game — only where you are the instant the ball is kicked to you.</p>
-        <h2>Why It Causes So Much Controversy</h2>
-        <p>With VAR technology, referees can review whether a player's shoulder, armpit, or big toe was a few inches offside. This leads to goals being disallowed by margins so small they require a freeze-frame and drawn lines to see. It is technically correct. It is also maddening.</p>
-      </div>
-    </div>
-
-    <div id="article-var" class="article-full">
-      <button class="back-btn" onclick="showArticleList()">← Back to Explainers</button>
-      <h1>VAR: Instant Replay, But With More Drama</h1>
-      <div class="article-body">
-        <p>VAR stands for Video Assistant Referee. It was introduced to catch clear errors in four specific situations: goals, penalty kicks, red cards, and mistaken identity.</p>
-        <h2>How It Works</h2>
-        <p>A separate team of officials in a video review room watches the game on multiple camera feeds. If they spot a potential error in one of those four categories, they can alert the on-field referee. The referee can then review the footage on a pitch-side monitor or simply accept the VAR team's recommendation.</p>
-        <div class="analogy">It's almost identical to NFL instant replay review — except in the NFL, coaches can throw the red flag to trigger it. In soccer, only the VAR officials can initiate a review. The on-field referee can also choose to go look at the monitor, like an NFL official going under the hood.</div>
-        <h2>Why It Takes So Long</h2>
-        <p>VAR pauses are frustrating because soccer has no natural stoppages like American sports. The referee has to halt an active game while the review happens. And because the technology can zoom in to pixel-level detail on offside calls, a 15-second play can trigger a 3-minute review.</p>
-        <h2>The Controversy</h2>
-        <p>The debate isn't really about the technology — it's about where to draw the line. Stopping a game for 4 minutes to rule a goal offside by a player's armpit is technically correct but ruins the experience. FIFA continues to adjust the guidelines.</p>
-      </div>
-    </div>
-
-    <div id="article-groups" class="article-full">
-      <button class="back-btn" onclick="showArticleList()">← Back to Explainers</button>
-      <h1>How Group Stage Standings Work</h1>
-      <div class="article-body">
-        <p>The World Cup starts with a group stage: 32 teams split into 8 groups of 4. Every team plays the other 3 teams in their group once. The top 2 from each group advance to the knockout rounds.</p>
-        <h2>The Points System</h2>
-        <p>Win = 3 points. Draw = 1 point each. Loss = 0 points. After 3 games, the two teams with the most points advance. Simple — until you get a tie.</p>
-        <div class="analogy">It's exactly like the NFL's conference standings at the end of the regular season — except compressed into 3 games per team. You want wins, you'll take ties, losses hurt bad.</div>
-        <h2>Tiebreakers</h2>
-        <p>If two teams finish with the same points, the tiebreaker order is: (1) Goal difference — how many more goals you scored than allowed. (2) Total goals scored. (3) Head-to-head record. (4) Head-to-head goal difference. Then it gets into fair play points (yellow and red card counts), and ultimately a drawing of lots.</p>
-        <h2>Why a 0-0 Draw Can Be a Great Result</h2>
-        <p>A draw gives both teams a point. If you're the underdog against a powerhouse, earning a point against them while the other two teams in your group play each other can be a tournament-saving result. Context matters enormously in the group stage.</p>
-      </div>
-    </div>
-
-    <div id="article-tiebreakers" class="article-full">
-      <button class="back-btn" onclick="showArticleList()">← Back to Explainers</button>
-      <h1>Extra Time, Penalties, and the Cruelest Tiebreaker in Sports</h1>
-      <div class="article-body">
-        <p>Once you're in the knockout rounds, there's no such thing as a draw. Someone has to go home. Here's what happens.</p>
-        <h2>Extra Time (30 Minutes)</h2>
-        <p>If it's still tied after 90 minutes, both teams play two additional 15-minute periods — 30 minutes total. Players are exhausted. Cramps are everywhere. Substitutions are used strategically to get fresher legs on the field.</p>
-        <div class="analogy">Think of it like NFL overtime — except it's 30 minutes, both teams have full possession, and there's no "sudden death" in extra time. You play all 30 minutes unless someone scores. If someone scores in extra time, they win. If still tied after 30 minutes: penalty shootout.</div>
-        <h2>The Penalty Shootout</h2>
-        <p>Each team picks 5 players. They take turns shooting from the penalty spot (12 yards from goal) with only the goalkeeper to beat. Whoever scores more of their 5 kicks wins. If still tied after 5 each, it goes to sudden death — alternating kicks until one team misses and the other scores.</p>
-        <h2>Why It's So Brutal</h2>
-        <p>A penalty kick is converted roughly 75-80% of the time under normal conditions. Under World Cup knockout pressure, with 60,000 people watching and your country's elimination on the line, that number drops. The goalkeeper guessing the wrong way, a slight mistrike, nerves — any of it ends your tournament. It is the purest high-pressure moment in team sports, decided essentially by individuals.</p>
-      </div>
-    </div>
-
-    <div id="article-rules" class="article-full">
-      <button class="back-btn" onclick="showArticleList()">← Back to Explainers</button>
-      <h1>Five Rule Changes You Need to Know for 2026</h1>
-      <div class="article-body">
-        <p>Soccer's rules are governed by IFAB (International Football Association Board), not FIFA. They update the Laws of the Game regularly. Here are the changes most relevant to watching the 2026 World Cup.</p>
-        <h2>1. Five Substitutions Per Game</h2>
-        <p>For most of soccer history, teams could make only 3 substitutions per match. That changed during COVID and stuck. Teams can now make up to 5 substitutions, with a maximum of 3 stoppages to do so (plus halftime). This significantly changes late-game tactics and squad management.</p>
-        <h2>2. Handball Rule Clarification</h2>
-        <p>If a goal is scored immediately after the ball accidentally touches an attacker's hand or arm — even if the player didn't intend it — the goal is disallowed. "Unintentional" no longer gets you off the hook if you benefit directly.</p>
-        <h2>3. Encroachment on Penalties</h2>
-        <p>If a goalkeeper moves off their line too early during a penalty and the kick is missed, the kick is retaken. This is now enforced much more strictly with VAR. It has led to several high-profile penalty retakes.</p>
-        <h2>4. Concussion Substitutions</h2>
-        <p>Teams now get an additional substitution specifically for suspected concussions, which does not count against their 5-sub allowance. It's a significant player safety improvement.</p>
-        <h2>5. Time-Wasting Crackdown</h2>
-        <p>Goalkeepers are now limited to 8 seconds when holding the ball (down from 6, though enforcement was previously lax). Referees are also instructed to add more accurate stoppage time — which is why you're seeing 10+ minutes of added time in matches where previously it might have been 4 or 5.</p>
-      </div>
-    </div>
-
+<!-- SEARCH HEADER -->
+<div class="search-header">
+  <div class="google-logo">
+    <span class="logo-blue">G</span><span class="logo-red">o</span><span class="logo-yellow">o</span><span class="logo-blue">g</span><span class="logo-green">l</span><span class="logo-red">e</span>
   </div>
-</div>
-
-<div id="page-about" class="page">
-  <div class="container">
-    <div class="about-section">
-      <h2>What This Is</h2>
-      <p>Soccer Explained for Americans was built for one reason: the World Cup is the biggest sporting event on the planet, and millions of Americans are watching with basically no idea what's going on.</p>
-      <p>Not because they're not sports fans — most of them are hardcore NFL, NBA, or MLB fans — but because soccer has its own vocabulary, its own rules quirks, and its own unwritten culture that nobody explained to them.</p>
-      <p>This tool fixes that. Ask any question, get a plain-English answer using analogies from American sports you already understand. No condescension, no jargon.</p>
-      <h2>How It Works</h2>
-      <p>The AI answering your questions is powered by Claude (made by Anthropic). It's been specifically prompted to give concise, analogy-first answers for American first-time fans. You get 3 free questions per session.</p>
-      <h2>Affiliate Disclosure</h2>
-      <p>This site includes affiliate links to services like FuboTV, Amazon, and StubHub. If you click and sign up or purchase, we may earn a small commission at no extra cost to you. These links help keep the tool free.</p>
+  <div class="search-box-wrapper">
+    <div class="search-box">
+      <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+        <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+      </svg>
+      <div class="search-text">
+        <span id="typed-text"></span><span class="cursor" id="cursor"></span>
+      </div>
+      <div class="search-box-icons">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 15c1.66 0 3-1.34 3-3V6c0-1.66-1.34-3-3-3S9 4.34 9 6v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V6zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-2.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+        </svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+        </svg>
+      </div>
     </div>
   </div>
 </div>
 
-<div id="page-contact" class="page">
-  <div class="container">
-    <div class="about-section">
-      <h2>Get In Touch</h2>
-      <p>Found an error? Have a suggestion? Want to tell us a rule was explained badly? We want to hear it.</p>
-      <form class="contact-form" onsubmit="handleContactSubmit(event)">
-        <input type="text" placeholder="Your name" required>
-        <input type="email" placeholder="Your email" required>
-        <textarea placeholder="Your message"></textarea>
-        <button type="submit">Send Message</button>
-      </form>
-      <p id="contactSuccess" style="display:none; margin-top:14px; color: var(--green); font-weight:600;">Thanks! We'll get back to you.</p>
-    </div>
-  </div>
+<!-- NAV TABS -->
+<div class="nav-tabs">
+  <a class="nav-tab active" href="#">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    All
+  </a>
+  <a class="nav-tab" href="#">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM8 15c0-1.66 1.34-3 3-3 .35 0 .69.07 1 .18V6h5v2h-3v7.03c-.02 1.64-1.35 2.97-3 2.97-1.66 0-3-1.34-3-3z"/></svg>
+    Videos
+  </a>
+  <a class="nav-tab" href="#">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+    Images
+  </a>
+  <a class="nav-tab" href="#">News</a>
+  <a class="nav-tab" href="#">More</a>
+  <a class="nav-tab" href="#" style="margin-left:auto;">Tools</a>
 </div>
 
-<div id="page-privacy" class="page">
-  <div class="container">
-    <div class="legal-body">
-      <h2>Privacy Policy</h2>
-      <p>Last updated: 2026</p>
-      <h2>What We Collect</h2>
-      <ul>
-        <li>Questions you submit to the AI tool (processed by Anthropic's API, not stored by us)</li>
-        <li>Standard web analytics (page views, referral sources) via Google Analytics if enabled</li>
-        <li>No account, no registration, no persistent personal data collected</li>
-      </ul>
-      <h2>Cookies</h2>
-      <p>We use localStorage to count your free questions per device. This contains no personal information. If Google AdSense or Google Analytics is enabled, those services set their own cookies per Google's privacy policy.</p>
-      <h2>Affiliate Links</h2>
-      <p>This site contains affiliate links to third-party services (FuboTV, Amazon Associates, StubHub). Clicking these links may set cookies on third-party sites. We receive a commission if you complete a purchase or signup. We are not responsible for the privacy practices of those third-party sites.</p>
-      <h2>Third-Party APIs</h2>
-      <p>Questions submitted to the AI tool are sent to Anthropic's API. Anthropic's privacy policy applies to that data. We do not log or store the content of your questions on our servers.</p>
-      <h2>Contact</h2>
-      <p>Questions about this privacy policy? Use the Contact page.</p>
+<!-- RESULTS -->
+<div class="results-area">
+
+  <div class="results-stats" id="results-stats">
+    About 12,400,000 results (0.47 seconds)
+  </div>
+
+  <!-- MAIN RESULT -->
+  <div class="result-card" id="result-main">
+    <div class="result-url">
+      <div class="result-favicon">S</div>
+      <div class="result-domain">soobia.afroz.com <span>› profile</span></div>
+    </div>
+    <div class="result-title">Soobia Afroz - Senior Product and Delivery Leader</div>
+    <div class="result-snippet">
+      <span class="date">May 2026 — </span>
+      Senior Product Manager and Agile Delivery Lead with 15+ years driving complex technology programmes across fintech, media, and enterprise. Currently at Billtrust. Expert in full product lifecycle, cross-functional delivery, and AI-powered workflow automation.
+    </div>
+    <div class="sitelinks">
+      <div class="sitelink">
+        <div class="sitelink-title">Product Manager Resume</div>
+        <div class="sitelink-snippet">Full lifecycle PM with enterprise SaaS experience and Aha! expertise</div>
+      </div>
+      <div class="sitelink">
+        <div class="sitelink-title">Scrum Master / Delivery Lead</div>
+        <div class="sitelink-snippet">Cross-functional delivery, risk management, executive reporting</div>
+      </div>
+      <div class="sitelink">
+        <div class="sitelink-title">Agile Coach</div>
+        <div class="sitelink-snippet">Transformation programmes, SAFe, PI Planning, lean methodologies</div>
+      </div>
+      <div class="sitelink">
+        <div class="sitelink-title">AI Automation Work</div>
+        <div class="sitelink-snippet">Claude-powered PRD, Jira triage, sprint reporting tools</div>
+      </div>
     </div>
   </div>
+
+  <!-- PEOPLE ALSO ASK -->
+  <div class="paa-section" id="paa-section">
+    <div class="paa-title">People also ask</div>
+    <div class="paa-item">
+      <div class="paa-question" onclick="togglePAA(this)">
+        What does Soobia Afroz specialize in?
+        <span class="paa-chevron">▼</span>
+      </div>
+      <div class="paa-answer">
+        Soobia specializes in product management, agile delivery, and scrum master roles across enterprise fintech and technology. She is particularly known for using AI tools like Claude to automate delivery workflows including Jira triage, sprint reporting, and PRD generation.
+      </div>
+    </div>
+    <div class="paa-item">
+      <div class="paa-question" onclick="togglePAA(this)">
+        Where has Soobia Afroz worked?
+        <span class="paa-chevron">▼</span>
+      </div>
+      <div class="paa-answer">
+        Soobia has worked at Billtrust (2024-present), McKinsey and Company (2018-2023), The New York Times (2013-2018), and Susquehanna International Group (2005-2013). She holds an M.S. in Computer and Information Science from the University of Pennsylvania.
+      </div>
+    </div>
+    <div class="paa-item">
+      <div class="paa-question" onclick="togglePAA(this)">
+        Is Soobia Afroz available for new opportunities?
+        <span class="paa-chevron">▼</span>
+      </div>
+      <div class="paa-answer">
+        Yes. Soobia is selectively exploring senior product management, agile delivery lead, and scrum master roles. She is based in New York and can be reached at soobia.afroz@gmail.com or 917.979.3973.
+      </div>
+    </div>
+    <div class="paa-item">
+      <div class="paa-question" onclick="togglePAA(this)">
+        What AI tools has Soobia Afroz built?
+        <span class="paa-chevron">▼</span>
+      </div>
+      <div class="paa-answer">
+        Soobia has built three Claude-powered workflow tools: a Jira triage automation for her Quick Response Team that eliminated daily manual ticket categorization, a sprint reporting tool that auto-generates weekly summaries from Jira data, and a PRD generation skill that converts stakeholder notes into structured product requirements documents.
+      </div>
+    </div>
+  </div>
+
+  <!-- SECOND RESULT -->
+  <div class="result-card" id="result-linkedin">
+    <div class="result-url">
+      <div class="result-favicon" style="background:#0a66c2;">in</div>
+      <div class="result-domain">linkedin.com <span>› in › soobia-afroz</span></div>
+    </div>
+    <div class="result-title">Soobia Afroz - Senior Product Manager - Billtrust | LinkedIn</div>
+    <div class="result-snippet">
+      Senior Product Manager at Billtrust. Agile Coach and Delivery Lead. 15+ years in enterprise technology delivery. M.S. Computer Science, University of Pennsylvania. New York, NY.
+    </div>
+  </div>
+
 </div>
 
-<nav id="bottom-nav">
-  <a href="#" class="active" onclick="showPage('chat', this)">Ask a Question</a>
-  <a href="#" onclick="showPage('articles', this)">Explainers</a>
-  <a href="#" class="scores-tab-btn" onclick="showScores(this)">Scores & Standings</a>
-  <a href="#" onclick="showPage('about', this)">About</a>
-  <a href="#" onclick="showPage('contact', this)">Contact</a>
-  <a href="#" onclick="showPage('privacy', this)">Privacy</a>
-</nav>
-
-<footer>
-  <p>Soccer Explained for Americans — built for the 2026 World Cup</p>
-  <p style="margin-top:6px;">
-    <a href="#" onclick="showPage('about', null)">About</a> &nbsp;·&nbsp;
-    <a href="#" onclick="showPage('privacy', null)">Privacy Policy</a> &nbsp;·&nbsp;
-    <a href="#" onclick="showPage('contact', null)">Contact</a>
-  </p>
-  <p style="margin-top:8px;">Contains affiliate links. We may earn a commission on qualifying purchases.</p>
-</footer>
-
-<a href="https://ko-fi.com/whyishecrying" target="_blank" rel="noopener" class="kofi-float">
-  ☕ Support this tool
-</a>
+<!-- KNOWLEDGE PANEL -->
+<div class="knowledge-panel" id="knowledge-panel">
+  <div class="kp-name">Soobia Afroz</div>
+  <div class="kp-title">Senior Product and Delivery Leader</div>
+  <hr class="kp-divider">
+  <div class="kp-row">
+    <span class="kp-label">Current</span>
+    <span class="kp-value">Billtrust, Apr 2024</span>
+  </div>
+  <div class="kp-row">
+    <span class="kp-label">Previous</span>
+    <span class="kp-value">McKinsey, NYT, SIG</span>
+  </div>
+  <div class="kp-row">
+    <span class="kp-label">Education</span>
+    <span class="kp-value">M.S. UPenn, B.S. NED</span>
+  </div>
+  <div class="kp-row">
+    <span class="kp-label">Email</span>
+    <span class="kp-value"><a href="mailto:soobia.afroz@gmail.com">soobia.afroz@gmail.com</a></span>
+  </div>
+  <div class="kp-row">
+    <span class="kp-label">Phone</span>
+    <span class="kp-value">917.979.3973</span>
+  </div>
+  <hr class="kp-divider">
+  <div class="kp-tags">
+    <span class="kp-tag">Product Management</span>
+    <span class="kp-tag">Agile Coach</span>
+    <span class="kp-tag">Scrum Master</span>
+    <span class="kp-tag">SAFe</span>
+    <span class="kp-tag">AI Automation</span>
+    <span class="kp-tag">Claude</span>
+    <span class="kp-tag">Jira</span>
+    <span class="kp-tag">Aha!</span>
+  </div>
+</div>
 
 <script>
-const API_ENDPOINT = '/api/ask';
-const MAX_QUESTIONS = 3;
-const SHARE_THRESHOLD = 3;
-const KOFI_THRESHOLD = 20;
 
-// ── localStorage-backed question counter ──
-let questionsUsed = parseInt(localStorage.getItem('whyishecrying_q') || '0');
+  // --- ROLE DETECTION ---
+  // Read ?role= from URL. Supported values: product, pm, agile, scrum. Defaults to general.
+  // product is the default -- same as no parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const role = (urlParams.get("role") || "general").toLowerCase();
 
-// On load, restore counter state
-document.addEventListener('DOMContentLoaded', function() {
-  const remaining = Math.max(0, MAX_QUESTIONS - questionsUsed);
-  document.getElementById('questionsLeft').textContent = remaining;
-  if (questionsUsed >= SHARE_THRESHOLD) {
-    document.getElementById('sharePrompt').style.display = 'block';
-  }
-  if (questionsUsed >= KOFI_THRESHOLD) {
-    document.getElementById('kofiPrompt').style.display = 'block';
-  }
-});
-
-const CACHE = {
-  "what is offside": {
-    answer: `Offside is like a penalty in football for being in the wrong position before a pass. When your teammate kicks the ball to you, you cannot be ahead of the last defender (not counting the goalie). Think of it like the line of scrimmage in the NFL — you can't be past that line to receive a forward pass. The "line" in soccer is the second-to-last defender, and it's checked at the exact moment the ball is kicked. If any part of your body that can score a goal is ahead of that defender, you're offside and the play is called back.`,
-    affiliate: 'watch'
-  },
-  "how does var work": {
-    answer: `VAR (Video Assistant Referee) is basically NFL instant replay — except soccer refs can't call it themselves. A separate team in a video room watches camera feeds and can flag four types of plays for review: goals, penalty kick decisions, red cards, and mistaken player identity. The on-field ref then either accepts the recommendation or goes to a pitch-side monitor to look for themselves, like an NFL official going "under the hood." The reason it takes so long is that soccer has no natural stoppages, so the whole game halts while the review happens.`,
-    affiliate: 'watch'
-  },
-  "what happens if tied after 90 minutes": {
-    answer: `In the knockout rounds (not group stage), a tie after 90 minutes means 30 minutes of extra time — two 15-minute halves. If still tied, you go to a penalty shootout: each team picks 5 shooters, they alternate kicking from 12 yards out against only the goalkeeper. Best of 5 wins. If still tied, sudden death kicks continue until one team scores and the other misses. It's the cruelest tiebreaker in sports — a 120-minute team battle decided by 5 individual moments under maximum pressure.`,
-    affiliate: 'watch'
-  },
-  "why do players fake injuries": {
-    answer: `A few real reasons. First, some aren't faking — soccer involves a lot of contact and a hard kick to the shin actually hurts. Second, players exaggerate to draw fouls, similar to flopping in the NBA. Third, "going down" can be a tactical move to kill clock or disrupt the opponent's momentum — like a late-game intentional foul in basketball. Referees are instructed to penalize obvious simulation with a yellow card, but it's hard to distinguish real pain from gamesmanship in real time.`,
-    affiliate: 'general'
-  },
-  "what is a penalty shootout": {
-    answer: `A penalty shootout is a tiebreaker used in knockout rounds when extra time doesn't produce a winner. Each team picks 5 players (in secret), who alternate taking shots from 12 yards out — just the shooter vs. the goalkeeper. Whoever scores more of their 5 wins. If it's tied after 5 each, it goes to sudden death: alternating kicks, first team to score while the other misses wins. It converts about 75% under normal conditions, but under World Cup knockout pressure with your country watching, nerves can take over. It's brutal.`,
-    affiliate: 'watch'
-  },
-  "how do group standings work": {
-    answer: `Groups of 4 teams, each plays the other 3 once. Win = 3 points, draw = 1 point each, loss = 0. Top 2 teams in points advance to the knockout round. Tiebreaker order: goal difference (goals scored minus goals allowed), then total goals scored, then head-to-head record. This is why a 4-0 win against a weak team matters — it can change your goal difference enough to survive a tiebreaker. Think NFL conference standings but compressed to 3 games.`,
-    affiliate: 'general'
-  },
-  "what is stoppage time": {
-    answer: `Soccer runs continuous time — the clock never stops for injuries, substitutions, or delays. Instead, the referee's assistant tracks all that dead time and the referee adds it at the end of each half. That's stoppage time (also called injury time or added time). A typical half might get 2-5 minutes added. Since FIFA started enforcing stricter time-wasting rules, it's common to see 8-10 minutes of stoppage added in the second half. Think of it like adding back all the time that was burned in the huddle in an NFL game, but done at the end.`,
-    affiliate: 'general'
-  },
-  "what is a red card": {
-    answer: `A red card is the most severe punishment a referee can give. The player is immediately ejected from the game and their team plays a man down for the rest of the match — you can't substitute a replacement. It's like an ejection in baseball combined with not being able to bring in a pinch runner. You can get a red card two ways: a second yellow card in the same game, or a straight red for serious foul play, violent conduct, or denying an obvious goal-scoring opportunity. Playing 11 vs 10 for 60+ minutes is a massive disadvantage.`,
-    affiliate: 'general'
-  },
-  "what is a yellow card": {
-    answer: `A yellow card is a formal caution — the referee shows it to a player as an official warning. Two yellows in the same game = automatic red card (ejection). Yellow cards also accumulate across the tournament: at the World Cup, if a player collects yellow cards in separate games, they can get suspended for future games once they hit a certain threshold. It's the equivalent of technical fouls in the NBA — one is a warning, two get you thrown out.`,
-    affiliate: 'general'
-  },
-  "how do substitutions work": {
-    answer: `Teams can make up to 5 substitutions per game, but only in 3 stoppages (plus halftime). So you can't sub one player at a time five different times — you have to bundle substitutions together. Once a player comes off, they can't come back on (like most American sports). Subs are a key tactical tool — bringing on a fast winger late in the game, or using your last sub to burn clock. Unlike the NFL, there are no special teams or free unlimited substitutions. Every player change is a strategic decision.`,
-    affiliate: 'general'
-  },
-  "what is goal difference": {
-    answer: `Goal difference is goals scored minus goals allowed across all your group stage games. It's the first tiebreaker when teams finish level on points. If USA scores 6 goals and allows 2, their goal difference is +4. This is why running up the score against a weaker opponent actually matters — that +4 vs. +2 could be the difference between advancing and going home if two teams finish on the same points. Think of it like point differential in the NBA or NFL used to break ties in the standings.`,
-    affiliate: 'general'
-  }
-};
-
-function showPage(pageId, linkEl) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
-  document.getElementById('page-' + pageId).classList.add('active');
-  if (linkEl) linkEl.classList.add('active');
-  window.scrollTo(0, 0);
-}
-
-function showArticle(articleId) {
-  document.getElementById('articlesList').classList.add('hidden');
-  document.querySelectorAll('.article-full').forEach(a => a.classList.remove('active'));
-  document.getElementById('article-' + articleId).classList.add('active');
-  window.scrollTo(0, 0);
-}
-
-function showArticleList() {
-  document.getElementById('articlesList').classList.remove('hidden');
-  document.querySelectorAll('.article-full').forEach(a => a.classList.remove('active'));
-}
-
-function askQuestion(text) {
-  showPage('chat', document.querySelector('nav a'));
-  document.getElementById('chatInput').value = text;
-  sendMessage();
-}
-
-function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
-}
-
-function autoResize(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
-}
-
-function normalizeQuestion(q) {
-  return q.toLowerCase().replace(/[?!.,]/g, '').replace(/\s+/g, ' ').trim();
-}
-
-function getCachedAnswer(question) {
-  const normalized = normalizeQuestion(question);
-
-  // Exact or full phrase match first
-  for (const [key, value] of Object.entries(CACHE)) {
-    if (normalized === key || normalized.includes(key)) return value;
-  }
-
-  // Fuzzy match: require 80%+ of key words to match AND at least 2 words matched
-  for (const [key, value] of Object.entries(CACHE)) {
-    const keyWords = key.split(' ').filter(w => w.length > 2); // ignore short words like "is", "a"
-    if (keyWords.length < 2) continue;
-    const matchCount = keyWords.filter(word => normalized.includes(word)).length;
-    const matchRatio = matchCount / keyWords.length;
-    if (matchRatio >= 0.8 && matchCount >= 2) return value;
-  }
-
-  return null;
-}
-
-function getAffiliateCard(type, question) {
-  const amazonUrl = buildAmazonUrl(question || '');
-  const amazonLabel = buildAffiliateLabel(question || '');
-  const cards = {
-    watch: {
-      icon: '📺',
-      title: 'Shop World Cup gear while you watch',
-      sub: 'Jerseys, scarves, flags and more on Amazon.',
-      cta: 'Shop Amazon',
-      url: 'https://www.amazon.com/s?k=world+cup+2026+merchandise&tag=whyishecrying-20'
-    },
-    jersey: {
-      icon: '👕',
-      title: amazonLabel.title,
-      sub: amazonLabel.sub,
-      cta: 'Shop on Amazon',
-      url: amazonUrl
-    },
-    tickets: {
-      icon: '🎟️',
-      title: 'Get tickets to a World Cup match',
-      sub: 'StubHub — the largest secondary ticket marketplace.',
-      cta: 'Find Tickets',
-      url: 'https://www.stubhub.com/world-cup-tickets/?COUPON=YOUR_STUBHUB_ID'
-    },
+  // --- ROLE-BASED CONTENT ---
+  // Each role defines its own title, snippet, sitelinks, PAA, KP tags, and LinkedIn snippet.
+  // To add a new role: add a new key below matching the ?role= value.
+  const roleContent = {
     general: {
-      icon: '⚽',
-      title: amazonLabel.title,
-      sub: amazonLabel.sub,
-      cta: 'Shop on Amazon',
-      url: amazonUrl
+      title: "Soobia Afroz - Senior Product and Delivery Leader",
+      snippet: "Senior Product Manager and Agile Delivery Lead with 15+ years in enterprise technology. Expert in full product lifecycle, cross-functional delivery, and AI-powered workflow automation.",
+      sitelinks: [
+        { title: "Product Manager Resume", snippet: "Full lifecycle PM with enterprise SaaS experience and Aha! expertise" },
+        { title: "Scrum Master / Delivery Lead", snippet: "Cross-functional delivery, risk management, executive reporting" },
+        { title: "Agile Coach", snippet: "Transformation programmes, SAFe, PI Planning, lean methodologies" },
+        { title: "AI Automation Work", snippet: "Claude-powered Jira triage, sprint reporting, PM lifecycle tools" }
+      ],
+      paa: [
+        { q: "What does Soobia Afroz specialize in?", a: "Soobia specializes in product management, agile delivery, and scrum master roles across enterprise fintech and technology. She is particularly known for using AI tools like Claude to automate delivery workflows including Jira triage, sprint reporting, and PM lifecycle coaching." },
+        { q: "Where has Soobia Afroz worked?", a: "Soobia has worked at Billtrust (2024-present), McKinsey and Company (2018-2023), The New York Times (2013-2018), and Susquehanna International Group (2005-2013). She holds an M.S. in Computer and Information Science from the University of Pennsylvania." },
+        { q: "Is Soobia Afroz available for new opportunities?", a: "Yes. Soobia is selectively exploring senior product management, agile delivery lead, and scrum master roles. She can be reached at soobia.afroz@gmail.com or 917.979.3973." },
+        { q: "What AI tools has Soobia Afroz built?", a: "Soobia has built several Claude-powered workflow automation tools including a Jira triage automation, a sprint reporting tool, and a PM lifecycle coach that guides product managers through every phase from discovery through GTM and post-launch close-out." }
+      ],
+      kpTitle: "Senior Product and Delivery Leader",
+      kpTags: ["Product Management", "Agile Coach", "Scrum Master", "SAFe", "AI Automation", "Claude", "Jira", "Aha!"],
+      linkedInSnippet: "Senior Product Manager at Billtrust. Agile Coach and Delivery Lead. 15+ years in enterprise technology delivery. M.S. Computer Science, University of Pennsylvania. New York, NY."
+    },
+    product: {
+      title: "Soobia Afroz - Senior Product Manager",
+      snippet: "Senior Product Manager and Agile Coach with 15+ years in enterprise technology. Experienced in full product lifecycle delivery, hypothesis-driven discovery, roadmap ownership, and AI-powered workflow automation.",
+      sitelinks: [
+        { title: "Wallet Platform", snippet: "Payment method management hub -- 3-phase delivery across buyer segments and payment rails" },
+        { title: "Payments Features", snippet: "Chargeback management, surcharge refunds, brand pricing -- fintech B2B delivery" },
+        { title: "AI-Powered PM Tools", snippet: "Claude-powered Jira triage, sprint reporting, PRD generation, and PM lifecycle coach" },
+        { title: "Agile Coaching", snippet: "15+ years embedding agile practices across McKinsey, NYT, and Billtrust" }
+      ],
+      paa: [
+        { q: "What products has Soobia Afroz built?", a: "At Billtrust, Soobia led delivery of the Wallet platform -- a buyer-facing payment management hub delivered in three phases covering standard buyers, Account Centric group-based access, and European SEPA Direct Debit. At The New York Times, she worked closely with Product and Engineering on the CRM roadmap and led delivery of a full migration across 3 call centers from a legacy system to SugarCRM, on time and within budget." },
+        { q: "How does Soobia approach product discovery and roadmap planning?", a: "Soobia starts with real customer signal -- interviews, usage data, and win/loss research -- before committing to build anything. She uses hypothesis-driven discovery to validate ideas early, defines the Minimum Lovable Product to avoid over-engineering, and manages roadmaps in Aha! to keep stakeholders aligned on priorities and trade-offs. She has run quarterly planning sessions with leadership across fintech and media, balancing customer impact, technical complexity, and business priorities across concurrent workstreams." },
+        { q: "What AI tools has Soobia built for product management?", a: "Soobia has built several Claude-powered workflow automation tools. Examples include a Jira triage automation that eliminated the team's daily manual ticket categorization process, a sprint reporting tool that auto-generates weekly delivery summaries from Jira data, and a PM lifecycle coach that guides product managers through every phase from discovery through GTM and post-launch close-out using the BMAD framework." },
+        { q: "What is Soobia's background in agile coaching and product delivery?", a: "Soobia has 15+ years spanning product management and agile coaching across fintech, media, and enterprise technology. At McKinsey she was part of the agile practice, coaching cross-functional teams on agile ways of working across multiple business units. At The New York Times she worked closely with Product and Engineering on the CRM roadmap and led delivery of a full CRM migration across 3 call centers. She holds ICAgile certifications in Agile Coaching and Coaching Agile Transitions, and applies coaching practices directly to how she runs product teams -- backlog readiness, delivery cadence, and cross-functional alignment." }
+      ],
+      kpTitle: "Senior Product Manager and Agile Coach",
+      kpTags: ["Product Management", "Aha!", "Enterprise SaaS", "Fintech", "Discovery", "Roadmap", "Agile Coaching", "AI Automation", "Claude", "Jira", "BMAD"],
+      linkedInSnippet: "Senior Product Manager and Agile Coach. 15+ years in enterprise technology across fintech, media, and consulting. M.S. Computer Science, University of Pennsylvania. New York, NY."
+    },
+    pm: {
+      // Coming soon -- will be built out for Project Management roles
+      title: "Soobia Afroz - Senior Product and Delivery Leader",
+      snippet: "Senior Product Manager and Agile Delivery Lead with 15+ years in enterprise technology. Currently at Billtrust. Expert in full product lifecycle, cross-functional delivery, and AI-powered workflow automation.",
+      sitelinks: [
+        { title: "Product Manager Resume", snippet: "Full lifecycle PM with enterprise SaaS experience and Aha! expertise" },
+        { title: "Scrum Master / Delivery Lead", snippet: "Cross-functional delivery, risk management, executive reporting" },
+        { title: "Agile Coach", snippet: "Transformation programmes, SAFe, PI Planning, lean methodologies" },
+        { title: "AI Automation Work", snippet: "Claude-powered PRD, Jira triage, sprint reporting tools" }
+      ],
+      paa: [
+        { q: "What does Soobia Afroz specialize in?", a: "Soobia specializes in product management, agile delivery, and scrum master roles across enterprise fintech and technology. She is particularly known for using AI tools like Claude to automate delivery workflows including Jira triage, sprint reporting, and PRD generation." },
+        { q: "Where has Soobia Afroz worked?", a: "Soobia has worked at Billtrust (2024-present), McKinsey and Company (2018-2023), The New York Times (2013-2018), and Susquehanna International Group (2005-2013). She holds an M.S. in Computer and Information Science from the University of Pennsylvania." },
+        { q: "Is Soobia Afroz available for new opportunities?", a: "Yes. Soobia is selectively exploring senior product management, agile delivery lead, and scrum master roles. She can be reached at soobia.afroz@gmail.com or 917.979.3973." },
+        { q: "What AI tools has Soobia Afroz built?", a: "Soobia has built three Claude-powered workflow tools: a Jira triage automation, a sprint reporting tool, and a PRD generation skill that converts stakeholder notes into structured product requirements documents." }
+      ],
+      kpTitle: "Senior Product and Delivery Leader",
+      kpTags: ["Product Management", "Agile Coach", "Scrum Master", "SAFe", "AI Automation", "Claude", "Jira", "Aha!"],
+      linkedInSnippet: "Senior Product Manager at Billtrust. Agile Coach and Delivery Lead. 15+ years in enterprise technology delivery. M.S. Computer Science, University of Pennsylvania. New York, NY."
+    },
+    agile: {
+      // Coming soon -- will be built out for Agile Coach roles
+      title: "Soobia Afroz - Senior Product and Delivery Leader",
+      snippet: "Senior Product Manager and Agile Delivery Lead with 15+ years in enterprise technology. Currently at Billtrust. Expert in full product lifecycle, cross-functional delivery, and AI-powered workflow automation.",
+      sitelinks: [
+        { title: "Product Manager Resume", snippet: "Full lifecycle PM with enterprise SaaS experience and Aha! expertise" },
+        { title: "Scrum Master / Delivery Lead", snippet: "Cross-functional delivery, risk management, executive reporting" },
+        { title: "Agile Coach", snippet: "Transformation programmes, SAFe, PI Planning, lean methodologies" },
+        { title: "AI Automation Work", snippet: "Claude-powered PRD, Jira triage, sprint reporting tools" }
+      ],
+      paa: [
+        { q: "What does Soobia Afroz specialize in?", a: "Soobia specializes in product management, agile delivery, and scrum master roles across enterprise fintech and technology. She is particularly known for using AI tools like Claude to automate delivery workflows including Jira triage, sprint reporting, and PRD generation." },
+        { q: "Where has Soobia Afroz worked?", a: "Soobia has worked at Billtrust (2024-present), McKinsey and Company (2018-2023), The New York Times (2013-2018), and Susquehanna International Group (2005-2013). She holds an M.S. in Computer and Information Science from the University of Pennsylvania." },
+        { q: "Is Soobia Afroz available for new opportunities?", a: "Yes. Soobia is selectively exploring senior product management, agile delivery lead, and scrum master roles. She can be reached at soobia.afroz@gmail.com or 917.979.3973." },
+        { q: "What AI tools has Soobia Afroz built?", a: "Soobia has built three Claude-powered workflow tools: a Jira triage automation, a sprint reporting tool, and a PRD generation skill that converts stakeholder notes into structured product requirements documents." }
+      ],
+      kpTitle: "Senior Product and Delivery Leader",
+      kpTags: ["Product Management", "Agile Coach", "Scrum Master", "SAFe", "AI Automation", "Claude", "Jira", "Aha!"],
+      linkedInSnippet: "Senior Product Manager at Billtrust. Agile Coach and Delivery Lead. 15+ years in enterprise technology delivery. M.S. Computer Science, University of Pennsylvania. New York, NY."
+    },
+    scrum: {
+      // Coming soon -- will be built out for Scrum Master roles
+      title: "Soobia Afroz - Senior Product and Delivery Leader",
+      snippet: "Senior Product Manager and Agile Delivery Lead with 15+ years in enterprise technology. Currently at Billtrust. Expert in full product lifecycle, cross-functional delivery, and AI-powered workflow automation.",
+      sitelinks: [
+        { title: "Product Manager Resume", snippet: "Full lifecycle PM with enterprise SaaS experience and Aha! expertise" },
+        { title: "Scrum Master / Delivery Lead", snippet: "Cross-functional delivery, risk management, executive reporting" },
+        { title: "Agile Coach", snippet: "Transformation programmes, SAFe, PI Planning, lean methodologies" },
+        { title: "AI Automation Work", snippet: "Claude-powered PRD, Jira triage, sprint reporting tools" }
+      ],
+      paa: [
+        { q: "What does Soobia Afroz specialize in?", a: "Soobia specializes in product management, agile delivery, and scrum master roles across enterprise fintech and technology. She is particularly known for using AI tools like Claude to automate delivery workflows including Jira triage, sprint reporting, and PRD generation." },
+        { q: "Where has Soobia Afroz worked?", a: "Soobia has worked at Billtrust (2024-present), McKinsey and Company (2018-2023), The New York Times (2013-2018), and Susquehanna International Group (2005-2013). She holds an M.S. in Computer and Information Science from the University of Pennsylvania." },
+        { q: "Is Soobia Afroz available for new opportunities?", a: "Yes. Soobia is selectively exploring senior product management, agile delivery lead, and scrum master roles. She can be reached at soobia.afroz@gmail.com or 917.979.3973." },
+        { q: "What AI tools has Soobia Afroz built?", a: "Soobia has built three Claude-powered workflow tools: a Jira triage automation, a sprint reporting tool, and a PRD generation skill that converts stakeholder notes into structured product requirements documents." }
+      ],
+      kpTitle: "Senior Product and Delivery Leader",
+      kpTags: ["Product Management", "Agile Coach", "Scrum Master", "SAFe", "AI Automation", "Claude", "Jira", "Aha!"],
+      linkedInSnippet: "Senior Product Manager at Billtrust. Agile Coach and Delivery Lead. 15+ years in enterprise technology delivery. M.S. Computer Science, University of Pennsylvania. New York, NY."
     }
   };
-  const card = cards[type] || cards.general;
-  return `
-    <a class="affiliate-card" href="${card.url}" target="_blank" rel="noopener sponsored">
-      <div class="affiliate-icon">${card.icon}</div>
-      <div class="affiliate-text">
-        <span class="affiliate-title">${card.title}</span>
-        <span class="affiliate-sub">${card.sub}</span>
-      </div>
-      <div class="affiliate-cta">${card.cta} →</div>
-    </a>
+
+  // Get content for current role, fall back to general if role not found
+  const content = roleContent[role] || roleContent.general;
+
+  // Apply role-specific content to the DOM on load
+  function applyRoleContent() {
+    // Main result title and snippet
+    document.querySelector(".result-title").textContent = content.title;
+    document.querySelector(".result-snippet").innerHTML = `<span class="date">May 2026 — </span>${content.snippet}`;
+
+    // Sitelinks
+    const sitelinkEls = document.querySelectorAll(".sitelink");
+    content.sitelinks.forEach((sl, i) => {
+      if (sitelinkEls[i]) {
+        sitelinkEls[i].querySelector(".sitelink-title").textContent = sl.title;
+        sitelinkEls[i].querySelector(".sitelink-snippet").textContent = sl.snippet;
+      }
+    });
+
+    // People Also Ask
+    const paaItems = document.querySelectorAll(".paa-item");
+    content.paa.forEach((item, i) => {
+      if (paaItems[i]) {
+        paaItems[i].querySelector(".paa-question").childNodes[0].textContent = item.q;
+        paaItems[i].querySelector(".paa-answer").textContent = item.a;
+      }
+    });
+
+    // Knowledge panel
+    document.querySelector(".kp-title").textContent = content.kpTitle;
+    const kpTagsEl = document.querySelector(".kp-tags");
+    kpTagsEl.innerHTML = content.kpTags.map(t => `<span class="kp-tag">${t}</span>`).join("");
+
+    // LinkedIn result snippet
+    const linkedInSnippet = document.querySelector("#result-linkedin .result-snippet");
+    if (linkedInSnippet) linkedInSnippet.textContent = content.linkedInSnippet;
+  }
+
+  const typedEl = document.getElementById("typed-text");
+  const cursorEl = document.getElementById("cursor");
+  const statsEl = document.getElementById("results-stats");
+  const resultMain = document.getElementById("result-main");
+  const resultLinkedIn = document.getElementById("result-linkedin");
+  const paaSection = document.getElementById("paa-section");
+  const knowledgePanel = document.getElementById("knowledge-panel");
+  const searchBox = document.querySelector(".search-box");
+  const searchTextWrapper = document.querySelector(".search-text");
+
+  // Apply role content immediately on load
+  applyRoleContent();
+
+  // Replace the display span+cursor with a real input for interactive mode
+  const realInput = document.createElement("input");
+  realInput.style.cssText = `
+    border: none; outline: none; background: transparent;
+    font-size: 16px; color: #202124; flex: 1;
+    font-family: Arial, sans-serif; width: 100%;
+    display: none; caret-color: #1a73e8;
   `;
-}
+  searchTextWrapper.appendChild(realInput);
 
-function addMessage(role, text, affiliateType, question) {
-  const messages = document.getElementById('chatMessages');
-  const div = document.createElement('div');
-  div.className = 'message ' + role;
-  const avatar = role === 'user' ? '🇺🇸' : '⚽';
-  const label = role === 'user' ? 'You' : 'Soccer Explainer';
-  let affiliateHtml = affiliateType ? getAffiliateCard(affiliateType, question) : '';
-  div.innerHTML = `
-    <div class="message-avatar">${avatar}</div>
-    <div class="message-body">
-      <div class="message-label">${label}</div>
-      <div class="message-text">${text}</div>
-      ${affiliateHtml}
-    </div>
-  `;
-  messages.appendChild(div);
-  messages.scrollTop = messages.scrollHeight;
-}
+  let autoTyping = true;
+  let autoTypeIndex = 0;
+  const autoTypeText = "Soobia Afroz";
 
-function addTypingIndicator() {
-  const messages = document.getElementById('chatMessages');
-  const div = document.createElement('div');
-  div.className = 'message assistant';
-  div.id = 'typingIndicator';
-  div.innerHTML = `
-    <div class="message-avatar">⚽</div>
-    <div class="message-body">
-      <div class="message-label">Soccer Explainer</div>
-      <div class="typing"><span></span><span></span><span></span></div>
-    </div>
-  `;
-  messages.appendChild(div);
-  messages.scrollTop = messages.scrollHeight;
-}
-
-function removeTypingIndicator() {
-  const el = document.getElementById('typingIndicator');
-  if (el) el.remove();
-}
-
-// Known players for smart Amazon search
-const KNOWN_PLAYERS = [
-  'mbappe','mbappé','ronaldo','messi','neymar','haaland','salah','kane',
-  'vinicius','vini','benzema','modric','de bruyne','pedri','bellingham',
-  'pulisic','reyna','weah','turner','dest','musah','ferreira','aaronson',
-  'saka','rashford','sterling','griezmann','giroud','lewandowski'
-];
-
-// Known countries for smart Amazon search
-const KNOWN_COUNTRIES = [
-  'usa','usmnt','united states','america','american',
-  'france','brazil','argentina','england','germany','spain','portugal',
-  'netherlands','italy','mexico','japan','south korea','morocco',
-  'australia','canada','senegal','croatia','belgium','uruguay'
-];
-
-function detectAffiliateType(question) {
-  const q = question.toLowerCase();
-  // Watch/stream triggers
-  if (q.includes('watch') || q.includes('stream') || q.includes('channel') ||
-      q.includes('tv') || q.includes('broadcast') || q.includes('live') ||
-      q.includes('where can i see') || q.includes('how do i see') ||
-      q.includes('where to watch') || q.includes('cable') || q.includes('app')) return 'watch';
-  // Ticket triggers
-  if (q.includes('ticket') || q.includes('attend') || q.includes('stadium') ||
-      q.includes('in person') || q.includes('go to a game') || q.includes('see it live') ||
-      q.includes('venue') || q.includes('seats') || q.includes('buy tickets')) return 'tickets';
-  // Jersey triggers
-  if (q.includes('jersey') || q.includes('kit') || q.includes('shirt') || q.includes('uniform')) return 'jersey';
-  return 'general';
-}
-
-// Topic-to-Amazon keyword mapping
-const TOPIC_AMAZON_MAP = [
-  { keywords: ['red card', 'ejected', 'sent off', 'violent conduct'], search: 'soccer referee red card set', label: 'Soccer referee gear on Amazon' },
-  { keywords: ['yellow card', 'caution', 'booked'], search: 'soccer referee whistle kit', label: 'Soccer ref gear on Amazon' },
-  { keywords: ['goalkeeper', 'goalie', 'keeper', 'penalty save', 'shootout'], search: 'soccer goalkeeper gloves', label: 'Goalkeeper gloves on Amazon' },
-  { keywords: ['penalty', 'penalty kick', 'pk', 'spot kick'], search: 'soccer training penalty kick net', label: 'Soccer training gear on Amazon' },
-  { keywords: ['offside', 'offsides'], search: 'soccer tactics board game', label: 'Soccer strategy games on Amazon' },
-  { keywords: ['var', 'video assistant', 'instant replay', 'reviewed'], search: 'soccer fan gear funny VAR', label: 'Soccer fan merch on Amazon' },
-  { keywords: ['fake injury', 'diving', 'simulation', 'flopping'], search: 'soccer funny fan tshirt', label: 'Soccer fan shirts on Amazon' },
-  { keywords: ['free kick', 'free-kick', 'wall'], search: 'soccer free kick training equipment', label: 'Soccer training gear on Amazon' },
-  { keywords: ['header', 'heading'], search: 'soccer heading training ball', label: 'Soccer training gear on Amazon' },
-  { keywords: ['corner kick', 'corner'], search: 'soccer corner flag set', label: 'Soccer gear on Amazon' },
-  { keywords: ['stoppage time', 'injury time', 'added time', 'extra time'], search: 'soccer fan scarf world cup 2026', label: 'World Cup fan scarves on Amazon' },
-  { keywords: ['group stage', 'group standings', 'points table'], search: 'world cup 2026 wall chart poster', label: 'World Cup wall charts on Amazon' },
-  { keywords: ['substitution', 'sub ', 'substituted'], search: 'soccer jersey world cup 2026', label: 'Soccer jerseys on Amazon' },
-  { keywords: ['captain', 'armband', 'captaincy'], search: 'soccer captain armband', label: 'Captain armbands on Amazon' },
-  { keywords: ['boot', 'cleats', 'soccer shoe'], search: 'soccer cleats men 2026', label: 'Soccer cleats on Amazon' },
-  { keywords: ['watch', 'stream', 'broadcast', 'tv channel'], search: 'world cup 2026 fan bundle tv', label: 'World Cup fan gear on Amazon' },
-  { keywords: ['ticket', 'attend', 'stadium', 'venue'], search: 'world cup 2026 fan kit bag', label: 'World Cup stadium gear on Amazon' },
-];
-
-function buildAmazonUrl(question) {
-  const q = question.toLowerCase();
-  const tag = 'whyishecrying-20';
-
-  // Player match first
-  for (const player of KNOWN_PLAYERS) {
-    if (q.includes(player)) {
-      const name = player === 'mbappe' || player === 'mbappé' ? 'Mbappe' :
-                   player.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-      return `https://www.amazon.com/s?k=${encodeURIComponent(name + ' soccer jersey')}&tag=${tag}`;
-    }
-  }
-
-  // Country match
-  for (const country of KNOWN_COUNTRIES) {
-    if (q.includes(country)) {
-      const display = country === 'usa' || country === 'usmnt' || country === 'united states' || country === 'america' || country === 'american'
-        ? 'USMNT' : country.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-      return `https://www.amazon.com/s?k=${encodeURIComponent(display + ' World Cup jersey 2026')}&tag=${tag}`;
-    }
-  }
-
-  // Topic match
-  for (const topic of TOPIC_AMAZON_MAP) {
-    if (topic.keywords.some(kw => q.includes(kw))) {
-      return `https://www.amazon.com/s?k=${encodeURIComponent(topic.search)}&tag=${tag}`;
-    }
-  }
-
-  if (q.includes('jersey') || q.includes('kit') || q.includes('shirt')) {
-    return `https://www.amazon.com/s?k=world+cup+2026+jersey&tag=${tag}`;
-  }
-
-  return `https://www.amazon.com/s?k=world+cup+2026+merchandise&tag=${tag}`;
-}
-
-function buildAffiliateLabel(question) {
-  const q = question.toLowerCase();
-
-  for (const player of KNOWN_PLAYERS) {
-    if (q.includes(player)) {
-      const name = player === 'mbappe' || player === 'mbappé' ? 'Mbappe' :
-                   player.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-      return { title: `Shop ${name} gear on Amazon`, sub: `Jerseys, shirts and more — ships fast.` };
-    }
-  }
-
-  for (const country of KNOWN_COUNTRIES) {
-    if (q.includes(country)) {
-      const display = country === 'usa' || country === 'usmnt' || country === 'united states' || country === 'america' || country === 'american'
-        ? 'USMNT' : country.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-      return { title: `Shop ${display} merch on Amazon`, sub: `Jerseys, scarves, flags — ships fast.` };
-    }
-  }
-
-  for (const topic of TOPIC_AMAZON_MAP) {
-    if (topic.keywords.some(kw => q.includes(kw))) {
-      return { title: topic.label, sub: 'Ships fast from Amazon.' };
-    }
-  }
-
-  return { title: 'Shop World Cup merchandise', sub: 'Scarves, balls, flags and more on Amazon.' };
-}
-
-async function sendMessage() {
-  const input = document.getElementById('chatInput');
-  const question = input.value.trim();
-  if (!question) return;
-
-  input.value = '';
-  input.style.height = 'auto';
-  document.getElementById('sendBtn').disabled = true;
-
-  addMessage('user', question);
-  addTypingIndicator();
-
-  try {
-    const cached = getCachedAnswer(question);
-    let answer, affiliateType;
-
-    if (cached) {
-      // Cached answers are always free -- no limit check
-      await new Promise(r => setTimeout(r, 600));
-      answer = cached.answer;
-      affiliateType = cached.affiliate;
+  // --- AUTO TYPE ---
+  function typeChar() {
+    if (autoTypeIndex < autoTypeText.length) {
+      typedEl.textContent += autoTypeText[autoTypeIndex];
+      autoTypeIndex++;
+      setTimeout(typeChar, 80 + Math.random() * 60);
     } else {
-      // Only live API calls count against the limit
-      questionsUsed++;
-      localStorage.setItem('whyishecrying_q', questionsUsed);
-      const remaining = Math.max(0, MAX_QUESTIONS - questionsUsed);
-      document.getElementById('questionsLeft').textContent = remaining;
-
-      affiliateType = detectAffiliateType(question);
-      const response = await fetch('/api/ask', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question })
-      });
-      if (!response.ok) throw new Error('API error');
-      const data = await response.json();
-      answer = data.answer;
+      autoTyping = false;
+      setTimeout(() => {
+        cursorEl.classList.add("hidden");
+        showResults();
+      }, 400);
     }
-
-    removeTypingIndicator();
-    addMessage('assistant', answer, affiliateType, question);
-
-  } catch (err) {
-    removeTypingIndicator();
-    addMessage('assistant', "Sorry, something went wrong. Please try again in a moment.", null, null);
-    questionsUsed--;
-    localStorage.setItem('whyishecrying_q', questionsUsed);
-    document.getElementById('questionsLeft').textContent = MAX_QUESTIONS - questionsUsed;
   }
 
-  // Show share prompt at threshold
-  if (questionsUsed === SHARE_THRESHOLD) {
-    document.getElementById('sharePrompt').style.display = 'block';
-  }
-  // Show kofi prompt at threshold
-  if (questionsUsed === KOFI_THRESHOLD) {
-    document.getElementById('kofiPrompt').style.display = 'block';
-  }
-  // Update counter
-  const remaining = Math.max(0, MAX_QUESTIONS - questionsUsed);
-  document.getElementById('questionsLeft').textContent = remaining;
-  document.getElementById('sendBtn').disabled = false;
-}
-
-function handleContactSubmit(e) {
-  e.preventDefault();
-  document.getElementById('contactSuccess').style.display = 'block';
-  e.target.reset();
-}
-
-// ── HERO INPUT ──
-const heroInput = document.getElementById('heroInput');
-const heroPlaceholder = document.getElementById('heroPlaceholder');
-
-if (heroInput) {
-  heroInput.addEventListener('focus', function() {
-    if (heroPlaceholder) heroPlaceholder.style.opacity = '0';
+  // --- SWITCH TO INTERACTIVE MODE ---
+  searchBox.addEventListener("click", () => {
+    if (autoTyping) return; // don't interrupt auto type
+    // Switch display: hide span+cursor, show real input
+    typedEl.style.display = "none";
+    cursorEl.style.display = "none";
+    realInput.style.display = "block";
+    realInput.value = "";
+    realInput.focus();
+    hideResults();
+    hideNoResults();
   });
 
-  heroInput.addEventListener('blur', function() {
-    if (!this.value) {
-      if (heroPlaceholder) heroPlaceholder.style.opacity = '1';
+  // Keep focus while typing
+  realInput.addEventListener("blur", () => {
+    // Refocus immediately if user clicked elsewhere on the page (not a link)
+    setTimeout(() => {
+      if (realInput.style.display === "block") realInput.focus();
+    }, 50);
+  });
+
+  realInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const query = realInput.value.trim();
+      if (!query) return;
+      // Switch back to display mode
+      realInput.style.display = "none";
+      typedEl.style.display = "inline";
+      cursorEl.style.display = "none";
+      typedEl.textContent = query;
+      if (isMyName(query)) {
+        showResults();
+      } else {
+        showNoResults(query);
+      }
+    }
+    if (e.key === "Escape") {
+      realInput.style.display = "none";
+      typedEl.style.display = "inline";
+      cursorEl.style.display = "none";
     }
   });
 
-  heroInput.addEventListener('input', function() {
-    if (heroPlaceholder) heroPlaceholder.style.opacity = this.value ? '0' : '1';
-  });
-}
-
-function autoResizeHero(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-}
-
-function handleHeroKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendFromHero();
-  }
-}
-
-function sendFromHero() {
-  const heroInput = document.getElementById('heroInput');
-  const question = heroInput ? heroInput.value.trim() : '';
-  if (!question) return;
-  // Copy to main chat input and send
-  const chatInput = document.getElementById('chatInput');
-  if (chatInput) chatInput.value = question;
-  heroInput.value = '';
-  if (heroPlaceholder) heroPlaceholder.style.opacity = '1';
-  // Make sure chat page is active
-  showPage('chat', document.querySelector('#bottom-nav a'));
-  // Scroll to chat
-  const chatWindow = document.getElementById('chatMessages');
-  if (chatWindow) chatWindow.scrollIntoView({ behavior: 'smooth' });
-  sendMessage();
-}
-
-
-function dismissSharePrompt() {
-  document.getElementById('sharePrompt').style.display = 'none';
-}
-
-function dismissKofiPrompt() {
-  document.getElementById('kofiPrompt').style.display = 'none';
-}
-
-
-function showScores(linkEl) {
-  // On mobile, show the scores sidebar and hide chat content
-  document.querySelectorAll('#bottom-nav a').forEach(a => a.classList.remove('active'));
-  linkEl.classList.add('active');
-  const sidebar = document.getElementById('scoresSidebar');
-  const chatCol = document.querySelector('.chat-column');
-  if (window.innerWidth <= 768) {
-    sidebar.classList.add('active');
-    chatCol.style.display = 'none';
-  }
-  window.scrollTo(0, 0);
-}
-
-// When switching back to chat page, restore chat column
-const origShowPage = showPage;
-function showPage(pageId, linkEl) {
-  const chatCol = document.querySelector('.chat-column');
-  const sidebar = document.getElementById('scoresSidebar');
-  if (chatCol) chatCol.style.display = '';
-  if (sidebar) sidebar.classList.remove('active');
-  origShowPage(pageId, linkEl);
-}
-
-
-// ── SCORES WIDGET ──
-const COUNTRY_FLAGS = {
-  'Germany': '🇩🇪', 'France': '🇫🇷', 'Brazil': '🇧🇷', 'Argentina': '🇦🇷',
-  'Spain': '🇪🇸', 'Portugal': '🇵🇹', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Netherlands': '🇳🇱',
-  'Belgium': '🇧🇪', 'Italy': '🇮🇹', 'Uruguay': '🇺🇾', 'Mexico': '🇲🇽',
-  'United States': '🇺🇸', 'USA': '🇺🇸', 'Canada': '🇨🇦', 'Japan': '🇯🇵',
-  'South Korea': '🇰🇷', 'Morocco': '🇲🇦', 'Senegal': '🇸🇳', 'Ghana': '🇬🇭',
-  'Australia': '🇦🇺', 'Croatia': '🇭🇷', 'Serbia': '🇷🇸', 'Switzerland': '🇨🇭',
-  'Denmark': '🇩🇰', 'Poland': '🇵🇱', 'Ecuador': '🇪🇨', 'Colombia': '🇨🇴',
-  'Chile': '🇨🇱', 'Peru': '🇵🇪', 'Nigeria': '🇳🇬', 'Cameroon': '🇨🇲',
-  'Tunisia': '🇹🇳', 'South Africa': '🇿🇦', 'Egypt': '🇪🇬', 'Algeria': '🇩🇿',
-  'Saudi Arabia': '🇸🇦', 'Iran': '🇮🇷', 'Qatar': '🇶🇦', 'Turkey': '🇹🇷',
-  'Ukraine': '🇺🇦', 'Czech Republic': '🇨🇿', 'Austria': '🇦🇹', 'Hungary': '🇭🇺',
-  'Slovakia': '🇸🇰', 'Romania': '🇷🇴', 'Greece': '🇬🇷', 'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
-  'Wales': '🏴󠁧󠁢󠁷󠁬󠁳󠁿', 'Paraguay': '🇵🇾', 'Bolivia': '🇧🇴', 'Venezuela': '🇻🇪',
-  'Honduras': '🇭🇳', 'Costa Rica': '🇨🇷', 'Panama': '🇵🇦', 'Jamaica': '🇯🇲',
-  'New Zealand': '🇳🇿', 'Indonesia': '🇮🇩', 'Thailand': '🇹🇭', 'Vietnam': '🇻🇳',
-  'China': '🇨🇳', 'India': '🇮🇳', 'Iraq': '🇮🇶', 'Syria': '🇸🇾',
-  'Bosnia-Herzegovina': '🇧🇦', 'Slovenia': '🇸🇮', 'Albania': '🇦🇱',
-  'North Macedonia': '🇲🇰', 'Montenegro': '🇲🇪', 'Kosovo': '🇽🇰',
-  'Haiti': '🇭🇹', 'Cuba': '🇨🇺', 'Trinidad and Tobago': '🇹🇹'
-};
-
-function getFlag(name) {
-  return COUNTRY_FLAGS[name] || '🏳️';
-}
-
-function getAmazonUrl(teamName) {
-  const tag = 'whyishecrying-20';
-  const search = teamName === 'United States' ? 'USMNT World Cup jersey 2026' : teamName + ' World Cup jersey 2026';
-  return `https://www.amazon.com/s?k=${encodeURIComponent(search)}&tag=${tag}`;
-}
-
-function formatDate(dateStr) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
-    ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-}
-
-let scoresCache = { fixtures: null, standings: null, lastFetch: 0 };
-let currentScoresTab = 'fixtures';
-
-async function loadScores(type) {
-  const now = Date.now();
-  if (scoresCache[type] && now - scoresCache.lastFetch < 60000) {
-    renderScores(type, scoresCache[type]);
-    return;
+  // --- HELPERS ---
+  function isMyName(query) {
+    const q = query.toLowerCase().trim();
+    return q.includes("soobia") || q.includes("afroz");
   }
 
-  document.getElementById('scoresContent').innerHTML = '<div class="scores-loading">Loading...</div>';
-
-  try {
-    const res = await fetch(`/api/scores?type=${type}`);
-    if (!res.ok) throw new Error('failed');
-    const data = await res.json();
-    scoresCache[type] = data;
-    scoresCache.lastFetch = now;
-    renderScores(type, data);
-  } catch (err) {
-    document.getElementById('scoresContent').innerHTML = '<div class="scores-loading">Could not load data. Try again.</div>';
+  function escapeHtml(text) {
+    return text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   }
-}
 
-function renderScores(type, data) {
-  const container = document.getElementById('scoresContent');
-  if (!container) return;
+  function searchFor(query) {
+    realInput.style.display = "none";
+    typedEl.style.display = "inline";
+    cursorEl.style.display = "none";
+    typedEl.textContent = query;
+    hideNoResults();
+    if (isMyName(query)) showResults();
+    else showNoResults(query);
+  }
 
-  if (type === 'fixtures') {
-    if (!data.matches || data.matches.length === 0) {
-      container.innerHTML = '<div class="scores-loading">No fixtures available yet.</div>';
-      return;
-    }
-
-    // Show next 20 matches + any live/today
-    const now = new Date();
-    const matches = data.matches
-      .filter(m => new Date(m.utcDate) >= new Date(now - 24 * 60 * 60 * 1000))
-      .slice(0, 25);
-
-    let html = '';
-    matches.forEach(m => {
-      const isLive = m.status === 'IN_PLAY' || m.status === 'PAUSED';
-      const isFinished = m.status === 'FINISHED';
-      const home = m.homeTeam.name;
-      const away = m.awayTeam.name;
-      const homeScore = m.score.fullTime.home ?? (isLive ? m.score.halfTime.home ?? '0' : '-');
-      const awayScore = m.score.fullTime.away ?? (isLive ? m.score.halfTime.away ?? '0' : '-');
-      const scoreDisplay = isFinished || isLive ? `${homeScore} - ${awayScore}` : 'vs';
-      const group = m.group ? m.group.replace('GROUP_', 'Group ') : '';
-
-      html += `
-        <div class="fixture-item">
-          <div class="fixture-date">${isLive ? '🔴 LIVE' : formatDate(m.utcDate)}</div>
-          <div class="fixture-teams">
-            <a class="fixture-team" href="${getAmazonUrl(home)}" target="_blank" rel="noopener sponsored">
-              <span class="fixture-flag">${getFlag(home)}</span>
-              <span>${home}</span>
-            </a>
-            <span class="fixture-score${isLive ? ' live' : ''}">${scoreDisplay}</span>
-            <a class="fixture-team away" href="${getAmazonUrl(away)}" target="_blank" rel="noopener sponsored">
-              <span>${away}</span>
-              <span class="fixture-flag">${getFlag(away)}</span>
-            </a>
-          </div>
-          ${group ? `<div class="fixture-group">${group}</div>` : ''}
-        </div>`;
+  // --- SHOW RESULTS ---
+  function showResults() {
+    hideNoResults();
+    [resultMain, paaSection, resultLinkedIn, knowledgePanel].forEach(el => {
+      el.style.display = "block";
+      el.style.opacity = "0";
+      el.style.transform = "translateY(8px)";
+      el.style.animation = "none";
     });
-    container.innerHTML = html;
+    statsEl.style.opacity = "0";
+    statsEl.style.animation = "none";
 
-  } else {
-    // Standings
-    if (!data.standings || data.standings.length === 0) {
-      container.innerHTML = '<div class="scores-loading">Standings will appear once the tournament begins.</div>';
-      return;
-    }
-
-    let html = '';
-    data.standings.forEach(group => {
-      html += `<div class="standing-group">${group.group || 'Group'}</div>`;
-      group.table.forEach(row => {
-        const team = row.team.name;
-        html += `
-          <div class="standing-row">
-            <span class="standing-pos">${row.position}</span>
-            <a class="standing-team" href="${getAmazonUrl(team)}" target="_blank" rel="noopener sponsored">
-              <span>${getFlag(team)}</span>
-              <span>${team}</span>
-            </a>
-            <div class="standing-stats">
-              <span>${row.playedGames}G</span>
-              <span>${row.won}W</span>
-              <span>${row.draw}D</span>
-              <span>${row.lost}L</span>
-            </div>
-            <span class="standing-pts">${row.points}pts</span>
-          </div>`;
-      });
-    });
-    container.innerHTML = html;
+    setTimeout(() => { statsEl.style.animation = "fadeIn 0.3s ease forwards"; }, 10);
+    setTimeout(() => { resultMain.style.animation = "slideUp 0.4s ease forwards"; }, 100);
+    setTimeout(() => { knowledgePanel.style.animation = "slideUp 0.4s ease forwards"; }, 200);
+    setTimeout(() => { paaSection.style.animation = "slideUp 0.4s ease forwards"; }, 250);
+    setTimeout(() => { resultLinkedIn.style.animation = "slideUp 0.4s ease forwards"; }, 380);
   }
-}
 
-function switchScoresTab(type, btn) {
-  currentScoresTab = type;
-  document.querySelectorAll('.scores-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
-  loadScores(type);
-}
+  // --- HIDE RESULTS ---
+  function hideResults() {
+    [resultMain, paaSection, resultLinkedIn, knowledgePanel].forEach(el => {
+      el.style.display = "none";
+    });
+    statsEl.style.opacity = "0";
+  }
 
-// Load fixtures on page load
-document.addEventListener('DOMContentLoaded', function() {
-  loadScores('fixtures');
-  // Refresh every 60 seconds
-  setInterval(() => loadScores(currentScoresTab), 60000);
-});
+  // --- NO RESULTS ---
+  function showNoResults(query) {
+    hideResults();
+    let noRes = document.getElementById("no-results");
+    if (!noRes) {
+      noRes = document.createElement("div");
+      noRes.id = "no-results";
+      noRes.style.cssText = "max-width:600px;padding:30px 0;";
+      document.querySelector(".results-area").appendChild(noRes);
+    }
+    noRes.innerHTML = `
+      <p style="font-size:18px;color:#202124;margin-bottom:16px;">Your search - <strong>${escapeHtml(query)}</strong> - did not match any documents.</p>
+      <p style="font-size:14px;color:#5f6368;margin-bottom:8px;">Suggestions:</p>
+      <ul style="font-size:14px;color:#5f6368;padding-left:20px;line-height:2;">
+        <li>Make sure all words are spelled correctly.</li>
+        <li>Try different keywords.</li>
+        <li>Try more general keywords.</li>
+        <li>Try fewer keywords.</li>
+      </ul>
+      <p style="font-size:14px;color:#5f6368;margin-top:20px;">Did you mean: <a href="#" onclick="searchFor('Soobia Afroz');return false;" style="color:#1a0dab;text-decoration:none;font-style:italic;font-weight:500;">Soobia Afroz</a>?</p>
+    `;
+    noRes.style.display = "block";
+  }
 
+  function hideNoResults() {
+    const noRes = document.getElementById("no-results");
+    if (noRes) noRes.style.display = "none";
+  }
+
+  function togglePAA(el) {
+    el.parentElement.classList.toggle("open");
+  }
+
+  // Kick off auto type
+  setTimeout(typeChar, 800);
 </script>
-
 </body>
 </html>
